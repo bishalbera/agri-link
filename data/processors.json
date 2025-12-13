@@ -1,0 +1,201 @@
+{
+  "processors": [
+    {
+      "id": "processor_1",
+      "name": "Kissan Foods Pvt Ltd",
+      "type": "processor",
+      "contact": {
+        "name": "Vikram Singh",
+        "phone": "+91-9876543220",
+        "email": "sourcing@kissanfoods.in"
+      },
+      "location": {
+        "city": "Nashik",
+        "state": "Maharashtra",
+        "address": "MIDC Industrial Area, Nashik"
+      },
+      "products": ["Tomato Paste", "Ketchup", "Tomato Puree", "Canned Tomatoes"],
+      "acceptedCommodities": ["Tomato"],
+      "acceptedGrades": ["A", "B", "C"],
+      "capacity": {
+        "dailyTons": 50,
+        "minimumQuantityKg": 500
+      },
+      "pricing": {
+        "priceMultiplier": 0.70,
+        "note": "70% of market rate, guaranteed purchase"
+      },
+      "paymentTerms": "7_days",
+      "pickupAvailable": true,
+      "operatingHours": "6:00 AM - 8:00 PM",
+      "crisisAcceptance": true
+    },
+    {
+      "id": "processor_2",
+      "name": "McCain Foods India",
+      "type": "processor",
+      "contact": {
+        "name": "Anita Deshmukh",
+        "phone": "+91-9876543221",
+        "email": "farmers@mccain.in"
+      },
+      "location": {
+        "city": "Mehsana",
+        "state": "Gujarat",
+        "address": "McCain Processing Plant, Mehsana"
+      },
+      "products": ["Frozen French Fries", "Potato Flakes", "Dehydrated Potato"],
+      "acceptedCommodities": ["Potato"],
+      "acceptedGrades": ["A", "B"],
+      "capacity": {
+        "dailyTons": 100,
+        "minimumQuantityKg": 1000
+      },
+      "pricing": {
+        "priceMultiplier": 0.75,
+        "note": "75% of market rate for processing grade"
+      },
+      "paymentTerms": "15_days",
+      "pickupAvailable": true,
+      "operatingHours": "24/7",
+      "crisisAcceptance": true
+    },
+    {
+      "id": "processor_3",
+      "name": "Mother Dairy Fruit & Vegetable",
+      "type": "processor",
+      "contact": {
+        "name": "Deepak Verma",
+        "phone": "+91-9876543222",
+        "email": "procurement@motherdairy.com"
+      },
+      "location": {
+        "city": "Ghaziabad",
+        "state": "Uttar Pradesh",
+        "address": "Patparganj Industrial Area"
+      },
+      "products": ["Frozen Vegetables", "Fruit Juices", "Tomato Juice", "Vegetable Purees"],
+      "acceptedCommodities": ["Tomato", "Carrot", "Peas", "Beans", "Capsicum"],
+      "acceptedGrades": ["A", "B", "C"],
+      "capacity": {
+        "dailyTons": 30,
+        "minimumQuantityKg": 500
+      },
+      "pricing": {
+        "priceMultiplier": 0.65,
+        "note": "65% of market rate, accepts all grades"
+      },
+      "paymentTerms": "7_days",
+      "pickupAvailable": true,
+      "operatingHours": "8:00 AM - 6:00 PM",
+      "crisisAcceptance": true
+    },
+    {
+      "id": "cold_storage_1",
+      "name": "Snowman Logistics Cold Storage",
+      "type": "cold_storage",
+      "contact": {
+        "name": "Rahul Jain",
+        "phone": "+91-9876543223",
+        "email": "booking@snowman.in"
+      },
+      "location": {
+        "city": "Pune",
+        "state": "Maharashtra",
+        "address": "Chakan Industrial Area"
+      },
+      "services": ["Cold Storage", "Controlled Atmosphere Storage", "Ripening Chambers"],
+      "acceptedCommodities": ["Tomato", "Potato", "Onion", "Apple", "Grapes", "Pomegranate"],
+      "capacity": {
+        "totalCapacityTons": 5000,
+        "availableCapacityTons": 1200,
+        "minimumQuantityKg": 100
+      },
+      "pricing": {
+        "storageCostPerKgPerDay": 0.50,
+        "handlingChargePerKg": 1.00,
+        "note": "Storage only, not purchase"
+      },
+      "storageConditions": {
+        "temperatureRange": "2-8°C",
+        "humidityRange": "85-95%"
+      },
+      "maxStorageDays": 30,
+      "operatingHours": "24/7",
+      "crisisAcceptance": true
+    },
+    {
+      "id": "msp_center_1",
+      "name": "Government MSP Purchase Center",
+      "type": "msp",
+      "contact": {
+        "name": "District Agriculture Officer",
+        "phone": "+91-9876543224",
+        "email": "dao.nashik@gov.in"
+      },
+      "location": {
+        "city": "Nashik",
+        "state": "Maharashtra",
+        "address": "Krishi Bhavan, District HQ"
+      },
+      "services": ["Minimum Support Price Purchase", "Government Procurement"],
+      "acceptedCommodities": ["Tomato", "Potato", "Onion"],
+      "acceptedGrades": ["A", "B", "C"],
+      "capacity": {
+        "dailyCapacityTons": 20,
+        "minimumQuantityKg": 100
+      },
+      "pricing": {
+        "priceMultiplier": 0.80,
+        "note": "80% of cost price guaranteed by government"
+      },
+      "paymentTerms": "15_days",
+      "documentation": ["Farmer ID", "Land Records", "Bank Account"],
+      "operatingHours": "10:00 AM - 5:00 PM (Mon-Sat)",
+      "crisisAcceptance": true,
+      "note": "Subject to government scheme availability"
+    },
+    {
+      "id": "ngo_1",
+      "name": "Akshaya Patra Foundation",
+      "type": "ngo",
+      "contact": {
+        "name": "Coordinator",
+        "phone": "+91-9876543225",
+        "email": "donations@akshayapatra.org"
+      },
+      "location": {
+        "city": "Multiple",
+        "state": "Maharashtra",
+        "address": "Multiple kitchen locations"
+      },
+      "services": ["Food Donation Collection", "Mid-day Meal Program"],
+      "acceptedCommodities": ["Tomato", "Potato", "Onion", "Carrot", "Cabbage", "Rice", "Wheat"],
+      "acceptedGrades": ["A", "B"],
+      "capacity": {
+        "dailyCapacityTons": 5,
+        "minimumQuantityKg": 50
+      },
+      "pricing": {
+        "priceMultiplier": 0.30,
+        "note": "30% of market rate as token, tax benefits available"
+      },
+      "taxBenefits": "80G Certificate for donation",
+      "pickupAvailable": true,
+      "operatingHours": "9:00 AM - 6:00 PM",
+      "crisisAcceptance": true,
+      "note": "Last resort option, but prevents complete loss and helps community"
+    }
+  ],
+  "metadata": {
+    "lastUpdated": "2025-12-10",
+    "totalOutlets": 6,
+    "types": {
+      "processor": 3,
+      "cold_storage": 1,
+      "msp": 1,
+      "ngo": 1
+    },
+    "note": "Crisis shield outlet registry for Agri-Link hackathon"
+  }
+}

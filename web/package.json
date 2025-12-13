@@ -1,0 +1,42 @@
+{
+  "name": "agri-link",
+  "version": "1.0.0",
+  "description": "AI-powered agricultural crisis prevention system using Kestra AI Agents",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "kestra:deploy": "python scripts/deploy_flows.py",
+    "kestra:demo": "python scripts/deploy_flows.py --demo --follow",
+    "kestra:status": "python scripts/kestra_client.py status",
+    "kestra:api": "python3 ../backend/kestra_api.py",
+    "setup:python": "pip install -r scripts/requirements.txt"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwindcss": "^3.4.4",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.3.0",
+    "lucide-react": "latest",
+    "recharts": "^2.12.7",
+    "zustand": "^4.5.2",
+    "date-fns": "^3.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "^5.4.5",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "latest"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

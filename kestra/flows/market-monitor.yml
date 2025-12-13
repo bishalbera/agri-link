@@ -1,0 +1,178 @@
+# kestra/flows/market-monitor.yml
+# =============================================================================
+# MARKET MONITOR - Proactive Price Monitoring
+# =============================================================================
+# Scheduled workflow that monitors market prices and alerts farmers
+# BEFORE a full crisis develops.
+# =============================================================================
+
+id: market-monitor
+namespace: agrilink
+
+description: |
+  Scheduled workflow that monitors commodity prices across markets.
+  Detects price drops and sends early warnings to farmers.
+
+labels:
+  project: agri-link
+  feature: early-warning
+
+# Run every hour during market hours
+triggers:
+  - id: hourly_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 6-20 * * *"  # Every hour from 6 AM to 8 PM
+    timezone: "Asia/Kolkata"
+
+inputs:
+  - id: commodities
+    type: STRING
+    description: "Comma-separated list of commodities to monitor"
+    defaults: "Tomato,Potato,Onion,Cabbage"
+
+  - id: states
+    type: STRING
+    description: "Comma-separated list of states to monitor"
+    defaults: "Maharashtra,Karnataka,Gujarat"
+
+  - id: alert_threshold_percent
+    type: INT
+    description: "Price drop percentage to trigger warning"
+    defaults: 15
+
+variables:
+  api_base_url: "{{ kv('AGRILINK_API_BASE_URL') | default('http://localhost:3000/api') }}"
+
+tasks:
+  # =========================================================================
+  # TASK 1: Fetch Market Data for All Commodities
+  # =========================================================================
+  - id: fetch_tomato_prices
+    type: io.kestra.plugin.core.http.Request
+    uri: "{{ vars.api_base_url }}/market"
+    method: GET
+    params:
+      commodity: "Tomato"
+      state: "Maharashtra"
+      cost: "8"
+
+  - id: fetch_potato_prices
+    type: io.kestra.plugin.core.http.Request
+    uri: "{{ vars.api_base_url }}/market"
+    method: GET
+    params:
+      commodity: "Potato"
+      state: "Maharashtra"
+      cost: "6"
+
+  - id: fetch_onion_prices
+    type: io.kestra.plugin.core.http.Request
+    uri: "{{ vars.api_base_url }}/market"
+    method: GET
+    params:
+      commodity: "Onion"
+      state: "Maharashtra"
+      cost: "7"
+
+  # =========================================================================
+  # TASK 2: AI Market Analyst
+  # =========================================================================
+  - id: analyze_market_trends
+    type: io.kestra.plugin.ai.agent.AIAgent
+    systemMessage: |
+      You are a Market Analyst AI for Agri-Link.
+      Analyze multiple commodity prices and identify:
+      1. Commodities at risk of crash
+      2. Overall market health
+      3. Recommendations for farmers
+
+      You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+      {
+        "market_health": "HEALTHY" or "WARNING" or "CRITICAL",
+        "analysis_summary": "2-3 sentence overview",
+        "commodities_at_risk": [
+          {
+            "commodity": "name",
+            "risk_level": "LOW" or "MEDIUM" or "HIGH" or "CRITICAL",
+            "current_price": number,
+            "price_trend": "RISING" or "STABLE" or "FALLING" or "CRASHING",
+            "recommendation": "SELL_NOW" or "HOLD" or "WAIT" or "CRISIS_ALERT"
+          }
+        ],
+        "alerts": [
+          {
+            "type": "PRICE_DROP" or "GLUT_WARNING" or "OPPORTUNITY",
+            "commodity": "name",
+            "message": "alert message"
+          }
+        ],
+        "forecast_7day": "brief forecast"
+      }
+
+      The market_health, risk_level, price_trend, recommendation, and type fields must show all possible options.
+    prompt: |
+      ANALYZE MARKET DATA FOR MULTIPLE COMMODITIES:
+
+      === TOMATO ===
+      {{ outputs.fetch_tomato_prices.body }}
+
+      === POTATO ===
+      {{ outputs.fetch_potato_prices.body }}
+
+      === ONION ===
+      {{ outputs.fetch_onion_prices.body }}
+
+      Alert Threshold: {{ inputs.alert_threshold_percent }}% drop triggers warning
+
+      Provide comprehensive market analysis and identify any commodities at risk.
+
+  # =========================================================================
+  # TASK 3: Generate Alerts if Needed
+  # =========================================================================
+  - id: check_for_alerts
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{ outputs.analyze_market_trends.text | json | jq('.market_health') | first != 'HEALTHY' }}"
+    then:
+      - id: log_alert
+        type: io.kestra.plugin.core.log.Log
+        message: |
+          ⚠️ MARKET ALERT GENERATED
+          ══════════════════════════════════════
+          {{ outputs.analyze_market_trends.text }}
+          ══════════════════════════════════════
+
+      # In production, this would send SMS/push notifications
+      - id: generate_farmer_alert
+        type: io.kestra.plugin.ai.agent.AIAgent
+        systemMessage: |
+          Generate a simple alert message for farmers in Hindi and English.
+          Keep it short and actionable.
+
+          You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+          {
+            "english_alert": "...",
+            "hindi_alert": "..."
+          }
+        prompt: |
+          Create farmer alert based on this analysis:
+          {{ outputs.analyze_market_trends.text }}
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+outputs:
+  - id: market_analysis
+    type: JSON
+    value: "{{ outputs.analyze_market_trends.text }}"
+
+  - id: monitoring_timestamp
+    type: STRING
+    value: "{{ now() }}"
+
+pluginDefaults:
+  - type: io.kestra.plugin.ai.agent.AIAgent
+    values:
+      provider:
+        type: io.kestra.plugin.ai.provider.Anthropic
+        apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
+        modelName: "claude-sonnet-4-5-20250929"

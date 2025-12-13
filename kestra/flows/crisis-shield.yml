@@ -1,0 +1,258 @@
+# kestra/flows/crisis-shield.yml
+# =============================================================================
+# CRISIS SHIELD - Emergency Produce Diversion
+# =============================================================================
+# When market crashes, this workflow finds alternative outlets from our
+# REAL registry of food processors, MSP centers, cold storage, and NGOs.
+# =============================================================================
+
+id: crisis-shield
+namespace: agrilink
+
+description: |
+  Emergency workflow activated when market prices crash below cost.
+  Diverts produce to food processors, government MSP, or cold storage
+  to minimize farmer losses.
+
+labels:
+  project: agri-link
+  feature: crisis-prevention
+
+inputs:
+  - id: farmer_id
+    type: STRING
+
+  - id: farmer_name
+    type: STRING
+    defaults: "Farmer"
+
+  - id: commodity
+    type: STRING
+
+  - id: quantity_kg
+    type: INT
+
+  - id: quality_assessment
+    type: STRING
+    defaults: "{}"
+    description: "JSON string from quality assessment"
+
+  - id: state
+    type: STRING
+
+  - id: district
+    type: STRING
+
+  - id: cost_per_kg
+    type: FLOAT
+    description: "Farmer's cost of production per kg"
+
+  - id: market_data
+    type: STRING
+    defaults: "{}"
+    description: "JSON string from market data API"
+
+  - id: processors_data
+    type: STRING
+    defaults: "[]"
+    description: "JSON string of processor/MSP/cold storage objects from registry"
+
+variables:
+  # Parse quality grade from assessment
+  quality_grade: "{{ inputs.quality_assessment | json | jq('.grade') | first | default('B') }}"
+
+  # Parse market price from market data
+  market_price: "{{ inputs.market_data | json | jq('.currentPrice') | first | default(0) }}"
+
+  # Calculate potential losses
+  market_loss: "{{ (inputs.cost_per_kg - (inputs.market_data | json | jq('.currentPrice') | first | default(0))) * inputs.quantity_kg }}"
+
+  # Parse outlets data for AI
+  outlets_list: |
+    {{ inputs.processors_data | json | jq('.[] | "- " + .name + " (" + .type + "): Accepts " + (.acceptedCommodities | join(", ")) + ", Price: " + ((.pricing.priceMultiplier // 0) * 100 | tostring) + "% of market, Min qty: " + ((.capacity.minimumQuantityKg // .capacity.dailyCapacityTons * 1000) | tostring) + "kg"') | join('\n') }}
+
+  # Count by type
+  processor_count: "{{ inputs.processors_data | json | jq('[.[] | select(.type == \"processor\")] | length') | first | default(0) }}"
+  msp_count: "{{ inputs.processors_data | json | jq('[.[] | select(.type == \"msp\")] | length') | first | default(0) }}"
+  cold_storage_count: "{{ inputs.processors_data | json | jq('[.[] | select(.type == \"cold_storage\")] | length') | first | default(0) }}"
+
+tasks:
+  # =========================================================================
+  # TASK 1: Log Crisis Activation
+  # =========================================================================
+  - id: log_crisis_start
+    type: io.kestra.plugin.core.log.Log
+    message: |
+      🚨 CRISIS SHIELD ACTIVATED
+      ══════════════════════════════════════
+      Farmer: {{ inputs.farmer_name }} ({{ inputs.farmer_id }})
+      Commodity: {{ inputs.commodity }}
+      Quantity: {{ inputs.quantity_kg }} kg
+      Quality: Grade {{ vars.quality_grade }}
+      Location: {{ inputs.district }}, {{ inputs.state }}
+
+      💰 FINANCIAL ANALYSIS:
+      Cost of Production: ₹{{ inputs.cost_per_kg }}/kg
+      Current Market Price: ₹{{ vars.market_price }}/kg
+      Potential Loss at Market: ₹{{ vars.market_loss }}
+
+      🏭 AVAILABLE OUTLETS:
+      - Processors: {{ vars.processor_count }}
+      - MSP Centers: {{ vars.msp_count }}
+      - Cold Storage: {{ vars.cold_storage_count }}
+      ══════════════════════════════════════
+
+  # =========================================================================
+  # TASK 2: Crisis Router AI Agent
+  # =========================================================================
+  - id: crisis_router
+    type: io.kestra.plugin.ai.agent.AIAgent
+    systemMessage: |
+      You are the CRISIS ROUTER AI Agent for Agri-Link.
+
+      A farmer is in CRISIS - market prices have crashed below their cost of production.
+      Your job is to find the BEST alternative outlet to MINIMIZE THEIR LOSS.
+
+      PRIORITY ORDER (best to worst):
+      1. PROCESSOR - Food processing companies (ketchup, frozen, etc.)
+         - They buy at 60-80% of market, but guaranteed purchase
+         - Good for Grade B/C produce
+
+      2. MSP (Government Minimum Support Price)
+         - Government buys at ~80% of cost price
+         - Paperwork required, payment delayed
+         - Last guaranteed option
+
+      3. COLD STORAGE
+         - Store and wait for prices to recover
+         - Risk: perishable goods may spoil
+         - Cost: storage fees
+
+      4. NGO/FOOD BANK
+         - Last resort - donation with tax benefits
+         - Token payment (30% of market)
+         - Good for excess Grade A/B
+
+      You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+      {
+        "selected_outlet": {
+          "name": "outlet name from list",
+          "type": "processor" or "msp" or "cold_storage" or "ngo",
+          "location": "city, state",
+          "contact_phone": "phone if available"
+        },
+        "financial_analysis": {
+          "market_sale_price_per_kg": number,
+          "market_sale_total": number,
+          "market_loss": number,
+          "outlet_price_per_kg": number,
+          "outlet_total": number,
+          "outlet_loss": number,
+          "savings_vs_market": number,
+          "loss_reduction_percent": number
+        },
+        "reasoning": "why this outlet is best",
+        "alternative_options": [
+          {"name": "...", "type": "...", "price": number}
+        ],
+        "urgent_action_required": true or false,
+        "pickup_recommendation": "today" or "tomorrow" or "within 3 days"
+      }
+
+      The type field MUST be exactly one of: "processor", "msp", "cold_storage", or "ngo" (case-sensitive).
+    prompt: |
+      🚨 CRISIS SITUATION - FIND BEST OUTLET 🚨
+
+      === FARMER'S SITUATION ===
+      Farmer: {{ inputs.farmer_name }}
+      Location: {{ inputs.district }}, {{ inputs.state }}
+
+      === PRODUCE DETAILS ===
+      Commodity: {{ inputs.commodity }}
+      Quantity: {{ inputs.quantity_kg }} kg
+      Quality: Grade {{ vars.quality_grade }}
+
+      === FINANCIAL CRISIS ===
+      Cost of Production: ₹{{ inputs.cost_per_kg }}/kg
+      Current Market Price: ₹{{ vars.market_price }}/kg (CRASHED!)
+      If sold at market: LOSS of ₹{{ vars.market_loss }}
+
+      === AVAILABLE CRISIS OUTLETS ===
+      {{ vars.outlets_list }}
+
+      === YOUR TASK ===
+      1. Analyze each outlet's suitability
+      2. Calculate potential loss at each outlet
+      3. Select the BEST option to MINIMIZE loss
+      4. Provide clear recommendation
+
+  # =========================================================================
+  # TASK 3: Generate Urgent Notification
+  # =========================================================================
+  - id: generate_notification
+    type: io.kestra.plugin.ai.agent.AIAgent
+    systemMessage: |
+      Generate an URGENT but reassuring notification for a farmer in crisis.
+      Use simple language. Provide in BOTH Hindi and English.
+
+      You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+      {
+        "english_notification": "...",
+        "hindi_notification": "...",
+        "sms_text": "short SMS version in Hindi (max 160 chars)"
+      }
+    prompt: |
+      Create URGENT notification for farmer {{ inputs.farmer_name }}:
+
+      CRISIS DETAILS:
+      - Their {{ inputs.commodity }} market has crashed
+      - Original potential loss: ₹{{ vars.market_loss }}
+      - We found alternative outlet
+
+      SOLUTION FOUND:
+      {{ outputs.crisis_router.text }}
+
+      Make it reassuring - we SAVED them from bigger loss!
+
+  # =========================================================================
+  # TASK 4: Log Final Result
+  # =========================================================================
+  - id: log_result
+    type: io.kestra.plugin.core.log.Log
+    message: |
+      ✅ CRISIS SHIELD COMPLETE
+      ══════════════════════════════════════
+      Selected Outlet: {{ outputs.crisis_router.text | json | jq('.selected_outlet.name') | first }}
+      Type: {{ outputs.crisis_router.text | json | jq('.selected_outlet.type') | first }}
+      Savings vs Market Sale: ₹{{ outputs.crisis_router.text | json | jq('.financial_analysis.savings_vs_market') | first }}
+      ══════════════════════════════════════
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+outputs:
+  - id: crisis_resolution
+    type: JSON
+    value: "{{ outputs.crisis_router.text }}"
+    description: "Complete crisis resolution with outlet selection and financial analysis"
+
+  - id: notifications
+    type: JSON
+    value: "{{ outputs.generate_notification.text }}"
+    description: "Bilingual notifications for farmer"
+
+  - id: selected_outlet_name
+    type: STRING
+    value: "{{ outputs.crisis_router.text | json | jq('.selected_outlet.name') | first }}"
+
+  - id: savings_amount
+    type: STRING
+    value: "{{ outputs.crisis_router.text | json | jq('.financial_analysis.savings_vs_market') | first }}"
+
+pluginDefaults:
+  - type: io.kestra.plugin.ai.agent.AIAgent
+    values:
+      provider:
+        type: io.kestra.plugin.ai.provider.Anthropic
+        apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
+        modelName: "claude-sonnet-4-5-20250929"

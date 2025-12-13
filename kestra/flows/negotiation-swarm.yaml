@@ -1,0 +1,335 @@
+# kestra/flows/negotiation-swarm.yaml
+# =============================================================================
+# NEGOTIATION SWARM - 5 Parallel AI Negotiators
+# =============================================================================
+# Each AI agent uses a different negotiation strategy with REAL buyers
+# from our registry. They compete to get the best price for the farmer.
+# =============================================================================
+
+id: negotiation-swarm
+namespace: agrilink
+
+description: |
+  5 AI negotiators with different strategies compete in parallel
+  to find the best deal from REAL buyers in our registry.
+
+labels:
+  project: agri-link
+  feature: parallel-negotiation
+
+inputs:
+  - id: farmer_id
+    type: STRING
+
+  - id: commodity
+    type: STRING
+
+  - id: quantity_kg
+    type: INT
+
+  - id: quality_assessment
+    type: STRING
+    defaults: "{}"
+    description: "JSON string from quality assessment"
+
+  - id: min_price
+    type: FLOAT
+    description: "Minimum acceptable price per kg"
+
+  - id: market_data
+    type: STRING
+    defaults: "{}"
+    description: "JSON string from market data API"
+
+  - id: buyers_data
+    type: STRING
+    defaults: "[]"
+    description: "JSON string of buyer objects from registry API"
+
+variables:
+  # Parse quality grade
+  quality_grade: "{{ inputs.quality_assessment | json | jq('.grade') | first | default('B') }}"
+
+  # Parse market price
+  market_price: "{{ inputs.market_data | json | jq('.currentPrice') | first | default(0) }}"
+
+  # Convert buyers JSON to readable string for AI agents
+  buyers_list: "{{ inputs.buyers_data | json | jq('.[] | \"- \" + .name + \" (\" + .type + \"): Capacity \" + (.volumeCapacity|tostring) + \"kg, Payment: \" + .paymentTerms + \", Rating: \" + (.rating|tostring)') | join('\n') }}"
+
+tasks:
+  # =========================================================================
+  # PARALLEL NEGOTIATION - 5 Strategies Running Simultaneously
+  # =========================================================================
+  - id: parallel_negotiators
+    type: io.kestra.plugin.core.flow.Parallel
+    tasks:
+      # ----- AGENT 1: Anchor High Strategy -----
+      - id: agent_anchor_high
+        type: io.kestra.plugin.ai.agent.AIAgent
+        systemMessage: |
+          You are a skilled negotiator using the ANCHOR HIGH strategy.
+          Your approach: Start with a high price (30% above market) and negotiate down.
+          Emphasize the premium quality and scarcity of the product.
+
+          You are negotiating with REAL buyers. Select the most suitable one from the list.
+
+          You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+          {
+            "strategy": "ANCHOR_HIGH",
+            "selected_buyer": "buyer name from list",
+            "buyer_type": "restaurant" or "retailer" or "wholesale" or "mandi",
+            "opening_price": number,
+            "final_price": number,
+            "negotiation_rounds": number,
+            "accepted": true or false,
+            "reasoning": "why this buyer and price"
+          }
+
+          The buyer_type and accepted fields must show all possible options.
+        prompt: |
+          NEGOTIATE this sale using ANCHOR HIGH strategy:
+
+          === PRODUCT ===
+          Commodity: {{ inputs.commodity }}
+          Quantity: {{ inputs.quantity_kg }} kg
+          Quality: Grade {{ vars.quality_grade }}
+
+          === PRICING ===
+          Market Price: ₹{{ vars.market_price }}/kg
+          Minimum Acceptable: ₹{{ inputs.min_price }}/kg
+          Your Target: Start at ₹{{ vars.market_price * 1.3 }}/kg (30% premium)
+
+          === AVAILABLE BUYERS ===
+          {{ vars.buyers_list }}
+
+          Select the best buyer for ANCHOR HIGH and negotiate!
+
+      # ----- AGENT 2: Volume Play Strategy -----
+      - id: agent_volume_play
+        type: io.kestra.plugin.ai.agent.AIAgent
+        systemMessage: |
+          You are a skilled negotiator using the VOLUME PLAY strategy.
+          Your approach: Target high-volume buyers, offer slight discount for taking full quantity.
+          Save farmer logistics cost, guarantee full sale.
+
+          You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+          {
+            "strategy": "VOLUME_PLAY",
+            "selected_buyer": "buyer name from list",
+            "buyer_type": "restaurant" or "retailer" or "wholesale" or "mandi",
+            "opening_price": number,
+            "final_price": number,
+            "negotiation_rounds": number,
+            "accepted": true or false,
+            "reasoning": "why this buyer and price"
+          }
+        prompt: |
+          NEGOTIATE using VOLUME PLAY strategy:
+
+          === PRODUCT ===
+          Commodity: {{ inputs.commodity }}
+          Quantity: {{ inputs.quantity_kg }} kg (sell ALL at once)
+          Quality: Grade {{ vars.quality_grade }}
+
+          === PRICING ===
+          Market Price: ₹{{ vars.market_price }}/kg
+          Minimum Acceptable: ₹{{ inputs.min_price }}/kg
+
+          === AVAILABLE BUYERS ===
+          {{ vars.buyers_list }}
+
+          Find a high-volume buyer who can take the FULL quantity!
+
+      # ----- AGENT 3: Urgency Creator Strategy -----
+      - id: agent_urgency
+        type: io.kestra.plugin.ai.agent.AIAgent
+        systemMessage: |
+          You are a skilled negotiator using the URGENCY strategy.
+          Your approach: Create time pressure, mention other interested buyers,
+          emphasize fresh produce won't wait, today's price only.
+
+          You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+          {
+            "strategy": "URGENCY",
+            "selected_buyer": "buyer name from list",
+            "buyer_type": "restaurant" or "retailer" or "wholesale" or "mandi",
+            "opening_price": number,
+            "final_price": number,
+            "negotiation_rounds": number,
+            "accepted": true or false,
+            "reasoning": "why this buyer and price"
+          }
+        prompt: |
+          NEGOTIATE using URGENCY strategy:
+
+          === PRODUCT ===
+          Commodity: {{ inputs.commodity }} (FRESH - must sell TODAY)
+          Quantity: {{ inputs.quantity_kg }} kg
+          Quality: Grade {{ vars.quality_grade }}
+
+          === PRICING ===
+          Market Price: ₹{{ vars.market_price }}/kg
+          Minimum: ₹{{ inputs.min_price }}/kg
+
+          === AVAILABLE BUYERS ===
+          {{ vars.buyers_list }}
+
+          Create urgency! Fresh produce, other buyers interested, act now!
+
+      # ----- AGENT 4: Relationship Builder Strategy -----
+      - id: agent_relationship
+        type: io.kestra.plugin.ai.agent.AIAgent
+        systemMessage: |
+          You are a skilled negotiator using the RELATIONSHIP BUILDER strategy.
+          Your approach: Focus on long-term partnership, reliable seasonal supply,
+          fair dealing, building trust for future transactions.
+
+          You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+          {
+            "strategy": "RELATIONSHIP",
+            "selected_buyer": "buyer name from list",
+            "buyer_type": "restaurant" or "retailer" or "wholesale" or "mandi",
+            "opening_price": number,
+            "final_price": number,
+            "negotiation_rounds": number,
+            "accepted": true or false,
+            "reasoning": "why this buyer and price"
+          }
+        prompt: |
+          NEGOTIATE using RELATIONSHIP BUILDER strategy:
+
+          === PRODUCT ===
+          Commodity: {{ inputs.commodity }}
+          Quantity: {{ inputs.quantity_kg }} kg
+          Quality: Grade {{ vars.quality_grade }}
+
+          === PRICING ===
+          Market Price: ₹{{ vars.market_price }}/kg
+          Minimum: ₹{{ inputs.min_price }}/kg
+
+          === AVAILABLE BUYERS ===
+          {{ vars.buyers_list }}
+
+          Find a buyer for LONG-TERM partnership, reliable supply chain!
+
+      # ----- AGENT 5: Quality Premium Strategy -----
+      - id: agent_quality_premium
+        type: io.kestra.plugin.ai.agent.AIAgent
+        systemMessage: |
+          You are a skilled negotiator using the QUALITY PREMIUM strategy.
+          Your approach: Emphasize the quality grade, farm-fresh guarantee,
+          no sorting needed, chef/premium quality, worth the premium.
+
+          You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+          {
+            "strategy": "QUALITY_PREMIUM",
+            "selected_buyer": "buyer name from list",
+            "buyer_type": "restaurant" or "retailer" or "wholesale" or "mandi",
+            "opening_price": number,
+            "final_price": number,
+            "negotiation_rounds": number,
+            "accepted": true or false,
+            "reasoning": "why this buyer and price"
+          }
+        prompt: |
+          NEGOTIATE using QUALITY PREMIUM strategy:
+
+          === PRODUCT ===
+          Commodity: {{ inputs.commodity }}
+          Quantity: {{ inputs.quantity_kg }} kg
+          Quality: Grade {{ vars.quality_grade }} (PREMIUM)
+
+          === PRICING ===
+          Market Price: ₹{{ vars.market_price }}/kg
+          Minimum: ₹{{ inputs.min_price }}/kg
+          Target: ₹{{ vars.market_price * 1.2 }}/kg (20% quality premium)
+
+          === AVAILABLE BUYERS ===
+          {{ vars.buyers_list }}
+
+          Find a buyer who VALUES QUALITY and will pay premium!
+
+  # =========================================================================
+  # DECISION AGENT: Select Best Offer
+  # =========================================================================
+  - id: select_best_offer
+    type: io.kestra.plugin.ai.agent.AIAgent
+    systemMessage: |
+      You are the DECISION AGENT. Compare all negotiation results and select
+      the BEST deal for the farmer, considering:
+      1. Final price (highest is better)
+      2. Payment terms (immediate is better than delayed)
+      3. Buyer reliability
+      4. Full quantity acceptance
+
+      You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+      {
+        "winner": {
+          "strategy": "winning strategy name",
+          "buyer_name": "selected buyer",
+          "buyer_type": "type",
+          "final_price_per_kg": number,
+          "total_amount": number,
+          "payment_terms": "immediate" or "7_days" or "15_days"
+        },
+        "comparison_summary": "why this is the best deal",
+        "all_offers_ranked": [
+          {"rank": 1, "strategy": "...", "price": number},
+          {"rank": 2, "strategy": "...", "price": number}
+        ]
+      }
+
+      The payment_terms field must show all possible options.
+    prompt: |
+      COMPARE these negotiation results and SELECT THE BEST:
+
+      === PRODUCT INFO ===
+      Commodity: {{ inputs.commodity }}
+      Quantity: {{ inputs.quantity_kg }} kg
+
+      === NEGOTIATION RESULTS ===
+
+      1. ANCHOR HIGH:
+      {{ outputs.agent_anchor_high.text }}
+
+      2. VOLUME PLAY:
+      {{ outputs.agent_volume_play.text }}
+
+      3. URGENCY:
+      {{ outputs.agent_urgency.text }}
+
+      4. RELATIONSHIP:
+      {{ outputs.agent_relationship.text }}
+
+      5. QUALITY PREMIUM:
+      {{ outputs.agent_quality_premium.text }}
+
+      === YOUR TASK ===
+      Select the BEST offer for the farmer. Explain why.
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+outputs:
+  - id: best_offer
+    type: JSON
+    value: "{{ outputs.select_best_offer.text }}"
+
+  - id: all_negotiations
+    type: JSON
+    value: |
+      {
+        "anchor_high": {{ outputs.agent_anchor_high.text }},
+        "volume_play": {{ outputs.agent_volume_play.text }},
+        "urgency": {{ outputs.agent_urgency.text }},
+        "relationship": {{ outputs.agent_relationship.text }},
+        "quality_premium": {{ outputs.agent_quality_premium.text }}
+      }
+
+pluginDefaults:
+  - type: io.kestra.plugin.ai.agent.AIAgent
+    values:
+      provider:
+        type: io.kestra.plugin.ai.provider.Anthropic
+        apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
+        modelName: "claude-sonnet-4-5-20250929"

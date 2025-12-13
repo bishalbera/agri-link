@@ -1,0 +1,196 @@
+{
+  "costs": {
+    "Tomato": {
+      "costPerKg": 8,
+      "costPerQuintal": 800,
+      "components": {
+        "seeds": 50,
+        "fertilizer": 150,
+        "pesticides": 100,
+        "labor": 300,
+        "irrigation": 100,
+        "transport": 100
+      },
+      "seasonality": {
+        "peak": ["October", "November", "December"],
+        "lean": ["April", "May", "June"]
+      },
+      "yieldPerAcre": "8-12 tons",
+      "growingDays": "60-90"
+    },
+    "Potato": {
+      "costPerKg": 6,
+      "costPerQuintal": 600,
+      "components": {
+        "seeds": 200,
+        "fertilizer": 100,
+        "pesticides": 50,
+        "labor": 150,
+        "irrigation": 50,
+        "transport": 50
+      },
+      "seasonality": {
+        "peak": ["January", "February", "March"],
+        "lean": ["July", "August", "September"]
+      },
+      "yieldPerAcre": "10-15 tons",
+      "growingDays": "90-120"
+    },
+    "Onion": {
+      "costPerKg": 7,
+      "costPerQuintal": 700,
+      "components": {
+        "seeds": 100,
+        "fertilizer": 120,
+        "pesticides": 80,
+        "labor": 250,
+        "irrigation": 80,
+        "transport": 70
+      },
+      "seasonality": {
+        "peak": ["November", "December", "January"],
+        "lean": ["June", "July", "August"]
+      },
+      "yieldPerAcre": "8-12 tons",
+      "growingDays": "120-150"
+    },
+    "Cabbage": {
+      "costPerKg": 5,
+      "costPerQuintal": 500,
+      "components": {
+        "seeds": 30,
+        "fertilizer": 100,
+        "pesticides": 70,
+        "labor": 200,
+        "irrigation": 50,
+        "transport": 50
+      },
+      "seasonality": {
+        "peak": ["December", "January", "February"],
+        "lean": ["May", "June", "July"]
+      },
+      "yieldPerAcre": "15-25 tons",
+      "growingDays": "90-120"
+    },
+    "Cauliflower": {
+      "costPerKg": 6,
+      "costPerQuintal": 600,
+      "components": {
+        "seeds": 40,
+        "fertilizer": 120,
+        "pesticides": 80,
+        "labor": 220,
+        "irrigation": 70,
+        "transport": 70
+      },
+      "seasonality": {
+        "peak": ["November", "December", "January"],
+        "lean": ["April", "May", "June"]
+      },
+      "yieldPerAcre": "12-18 tons",
+      "growingDays": "90-120"
+    },
+    "Brinjal": {
+      "costPerKg": 7,
+      "costPerQuintal": 700,
+      "components": {
+        "seeds": 20,
+        "fertilizer": 130,
+        "pesticides": 100,
+        "labor": 280,
+        "irrigation": 100,
+        "transport": 70
+      },
+      "seasonality": {
+        "peak": ["October", "November", "March", "April"],
+        "lean": ["June", "July", "August"]
+      },
+      "yieldPerAcre": "15-25 tons",
+      "growingDays": "60-80"
+    },
+    "Green Chilli": {
+      "costPerKg": 10,
+      "costPerQuintal": 1000,
+      "components": {
+        "seeds": 50,
+        "fertilizer": 150,
+        "pesticides": 150,
+        "labor": 400,
+        "irrigation": 150,
+        "transport": 100
+      },
+      "seasonality": {
+        "peak": ["September", "October", "November"],
+        "lean": ["March", "April", "May"]
+      },
+      "yieldPerAcre": "5-8 tons",
+      "growingDays": "60-90"
+    },
+    "Capsicum": {
+      "costPerKg": 12,
+      "costPerQuintal": 1200,
+      "components": {
+        "seeds": 100,
+        "fertilizer": 200,
+        "pesticides": 150,
+        "labor": 450,
+        "irrigation": 200,
+        "transport": 100
+      },
+      "seasonality": {
+        "peak": ["October", "November", "December"],
+        "lean": ["April", "May", "June"]
+      },
+      "yieldPerAcre": "8-12 tons",
+      "growingDays": "70-90"
+    },
+    "Carrot": {
+      "costPerKg": 8,
+      "costPerQuintal": 800,
+      "components": {
+        "seeds": 80,
+        "fertilizer": 130,
+        "pesticides": 70,
+        "labor": 320,
+        "irrigation": 120,
+        "transport": 80
+      },
+      "seasonality": {
+        "peak": ["December", "January", "February"],
+        "lean": ["May", "June", "July"]
+      },
+      "yieldPerAcre": "10-15 tons",
+      "growingDays": "90-120"
+    },
+    "Lady Finger": {
+      "costPerKg": 9,
+      "costPerQuintal": 900,
+      "components": {
+        "seeds": 60,
+        "fertilizer": 140,
+        "pesticides": 120,
+        "labor": 380,
+        "irrigation": 120,
+        "transport": 80
+      },
+      "seasonality": {
+        "peak": ["June", "July", "August", "September"],
+        "lean": ["December", "January", "February"]
+      },
+      "yieldPerAcre": "6-10 tons",
+      "growingDays": "45-60"
+    }
+  },
+  "crisisThresholds": {
+    "severeDropPercent": 30,
+    "moderateDropPercent": 20,
+    "belowCostThreshold": 0.8,
+    "description": "Crisis activated when price < 80% of cost OR drops > 30% in 7 days"
+  },
+  "metadata": {
+    "source": "Commission for Agricultural Costs and Prices (CACP)",
+    "lastUpdated": "2025-12-10",
+    "currency": "INR",
+    "note": "Approximate costs for demonstration purposes"
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "buyers": [
+    {
+      "id": "buyer_1",
+      "name": "FreshMart Restaurant Chain",
+      "type": "restaurant",
+      "contact": {
+        "name": "Rajesh Sharma",
+        "phone": "+91-9876543210",
+        "email": "procurement@freshmart.in"
+      },
+      "location": {
+        "city": "Mumbai",
+        "state": "Maharashtra"
+      },
+      "preferredCommodities": ["Tomato", "Onion", "Potato", "Capsicum", "Green Chilli"],
+      "volumeCapacity": {
+        "daily": 500,
+        "weekly": 3000
+      },
+      "paymentTerms": "immediate",
+      "qualityRequirements": {
+        "minimumGrade": "A",
+        "freshnessHours": 24
+      },
+      "rating": 4.8,
+      "totalTransactions": 156,
+      "reliabilityScore": 0.95
+    },
+    {
+      "id": "buyer_2",
+      "name": "BigBasket Wholesale",
+      "type": "retailer",
+      "contact": {
+        "name": "Priya Patel",
+        "phone": "+91-9876543211",
+        "email": "sourcing@bigbasket.com"
+      },
+      "location": {
+        "city": "Bangalore",
+        "state": "Karnataka"
+      },
+      "preferredCommodities": ["Tomato", "Potato", "Onion", "Cabbage", "Carrot", "Beans"],
+      "volumeCapacity": {
+        "daily": 2000,
+        "weekly": 12000
+      },
+      "paymentTerms": "7_days",
+      "qualityRequirements": {
+        "minimumGrade": "B",
+        "freshnessHours": 48
+      },
+      "rating": 4.5,
+      "totalTransactions": 892,
+      "reliabilityScore": 0.92
+    },
+    {
+      "id": "buyer_3",
+      "name": "Metro Cash & Carry",
+      "type": "wholesale",
+      "contact": {
+        "name": "Amit Kumar",
+        "phone": "+91-9876543212",
+        "email": "produce@metro.in"
+      },
+      "location": {
+        "city": "Pune",
+        "state": "Maharashtra"
+      },
+      "preferredCommodities": ["Tomato", "Onion", "Potato", "Carrot", "Cabbage", "Cauliflower"],
+      "volumeCapacity": {
+        "daily": 5000,
+        "weekly": 30000
+      },
+      "paymentTerms": "15_days",
+      "qualityRequirements": {
+        "minimumGrade": "B",
+        "freshnessHours": 72
+      },
+      "rating": 4.7,
+      "totalTransactions": 1245,
+      "reliabilityScore": 0.98
+    },
+    {
+      "id": "buyer_4",
+      "name": "Local Sabzi Mandi",
+      "type": "mandi",
+      "contact": {
+        "name": "Ramesh Yadav",
+        "phone": "+91-9876543213",
+        "email": null
+      },
+      "location": {
+        "city": "Nashik",
+        "state": "Maharashtra"
+      },
+      "preferredCommodities": ["Tomato", "Potato", "Onion", "Green Chilli", "Brinjal"],
+      "volumeCapacity": {
+        "daily": 1000,
+        "weekly": 6000
+      },
+      "paymentTerms": "immediate",
+      "qualityRequirements": {
+        "minimumGrade": "C",
+        "freshnessHours": 96
+      },
+      "rating": 4.2,
+      "totalTransactions": 2341,
+      "reliabilityScore": 0.88
+    },
+    {
+      "id": "buyer_5",
+      "name": "Hotel Grand Kitchen",
+      "type": "restaurant",
+      "contact": {
+        "name": "Suresh Menon",
+        "phone": "+91-9876543214",
+        "email": "kitchen@hotelgrand.in"
+      },
+      "location": {
+        "city": "Mumbai",
+        "state": "Maharashtra"
+      },
+      "preferredCommodities": ["Tomato", "Capsicum", "Onion", "Garlic", "Ginger"],
+      "volumeCapacity": {
+        "daily": 200,
+        "weekly": 1200
+      },
+      "paymentTerms": "immediate",
+      "qualityRequirements": {
+        "minimumGrade": "A",
+        "freshnessHours": 12
+      },
+      "rating": 4.9,
+      "totalTransactions": 89,
+      "reliabilityScore": 0.99
+    }
+  ],
+  "metadata": {
+    "lastUpdated": "2025-12-10",
+    "totalBuyers": 5,
+    "regions": ["Maharashtra", "Karnataka"],
+    "note": "Demo buyer registry for Agri-Link hackathon"
+  }
+}

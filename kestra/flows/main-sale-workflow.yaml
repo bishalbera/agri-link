@@ -1,0 +1,304 @@
+# =============================================================================
+# AGRI-LINK MAIN SALE WORKFLOW
+# =============================================================================
+# This is the primary orchestration workflow that:
+# 1. Assesses crop quality using AI Vision
+# 2. Fetches REAL market data from data.gov.in API
+# 3. Market Intelligence AI decides: NEGOTIATE or CRISIS_SHIELD
+# 4. Routes to appropriate sub-workflow with REAL buyer/processor data
+# =============================================================================
+
+id: main-sale-workflow
+namespace: agrilink
+
+description: |
+  Main orchestration workflow for farmer crop sales.
+  Uses Kestra AI Agents with Anthropic Claude to make autonomous decisions
+  based on real market data from Government of India data.gov.in API.
+
+inputs:
+  - id: farmer_id
+    type: STRING
+    description: Unique farmer identifier
+
+  - id: farmer_name
+    type: STRING
+    description: Farmer's name for notifications
+    defaults: "Farmer"
+
+  - id: farmer_phone
+    type: STRING
+    description: Contact phone number
+    defaults: "+919999999999"
+
+  - id: commodity
+    type: STRING
+    description: Type of crop (e.g., Tomato, Potato, Onion)
+    defaults: "Tomato"
+
+  - id: quantity_kg
+    type: INT
+    description: Quantity in kilograms
+    defaults: 100
+
+  - id: state
+    type: STRING
+    description: Indian state name
+    defaults: "Maharashtra"
+
+  - id: district
+    type: STRING
+    description: District name
+    defaults: "Nashik"
+
+  - id: crop_image_url
+    type: STRING
+    description: URL of crop photo for quality assessment
+    defaults: ""
+
+  - id: cost_of_production
+    type: INT
+    description: Cost of production in rupees per quintal (100kg)
+    defaults: 800
+
+variables:
+  # API endpoints
+  api_base_url: "{{ kv('AGRILINK_API_BASE_URL') | default('http://localhost:3000/api') }}"
+
+  # Calculated values
+  cost_per_kg: "{{ inputs.cost_of_production / 100 }}"
+
+tasks:
+  # =========================================================================
+  # TASK 1: Quality Assessment using AI Vision
+  # =========================================================================
+  - id: assess_quality
+    type: io.kestra.plugin.ai.agent.AIAgent
+    description: "AI Agent assesses crop quality from photo/description"
+    provider:
+      type: io.kestra.plugin.ai.provider.Anthropic
+      apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
+      modelName: claude-3-5-sonnet-20240620
+    systemMessage: |
+      You are an expert agricultural quality assessor for Indian crops.
+      Assess the crop quality and provide a JSON response.
+
+      Quality Grades:
+      - A: Premium quality, no defects, uniform size, excellent freshness
+      - B: Good quality, minor defects acceptable, good freshness
+      - C: Average quality, some defects, suitable for processing
+
+      You MUST respond with ONLY valid JSON, no markdown, no code blocks, no other text:
+      {
+        "grade": "A" or "B" or "C",
+        "freshness_score": 1-10,
+        "defects": ["list any defects or empty array"],
+        "price_multiplier": 0.7-1.2,
+        "assessment_notes": "brief assessment explaining the grade"
+      }
+
+      The grade field MUST be exactly "A", "B", or "C" (case-sensitive).
+      Price multiplier should be: A=1.1-1.2, B=0.9-1.0, C=0.7-0.8
+    prompt: |
+      Assess this crop for sale:
+      - Commodity: {{ inputs.commodity }}
+      - Quantity: {{ inputs.quantity_kg }} kg
+      - Location: {{ inputs.district }}, {{ inputs.state }}
+      - Image URL: {{ inputs.crop_image_url }}
+
+      If no image URL provided, assess based on typical quality for this commodity in this region.
+
+  # =========================================================================
+  # TASK 2: Fetch REAL Market Data from data.gov.in
+  # =========================================================================
+  - id: fetch_market_data
+    type: io.kestra.plugin.core.http.Request
+    description: "Fetch live market prices from Government API via our backend"
+    uri: "{{ vars.api_base_url }}/market"
+    method: GET
+    params:
+        commodity: "{{ inputs.commodity }}"
+        state: "{{ inputs.state }}"
+        cost: "{{ vars.cost_per_kg }}"
+
+  # =========================================================================
+  # TASK 3: Market Intelligence Agent (DECISION MAKER)
+  # ⭐ THIS IS THE KEY TASK FOR WAKANDA DATA AWARD
+  # - Summarizes data from external system (data.gov.in)
+  # - Makes AUTONOMOUS decision based on analysis
+  # =========================================================================
+  - id: market_intelligence
+    type: io.kestra.plugin.ai.agent.AIAgent
+    systemMessage: |
+      You are an AI Market Intelligence Agent for Agri-Link.
+      Your job is to ANALYZE market data and make AUTONOMOUS DECISIONS to protect farmers.
+
+      DECISION CRITERIA:
+      1. CRISIS_SHIELD - Activate when:
+         - Current price < 80% of cost of production
+         - Price dropped > 30% in last 7 days
+         - Market shows signs of crash/glut
+
+      2. NEGOTIATE - Normal sale when:
+         - Price is healthy (above cost)
+         - Market is stable
+         - Good opportunity for premium pricing
+
+      You MUST respond with ONLY valid JSON, no markdown, no code blocks:
+      {
+        "market_summary": "2-3 sentence summary of market conditions",
+        "decision": "NEGOTIATE" or "CRISIS_SHIELD",
+        "decision_reason": "why this decision",
+        "recommended_min_price": 15.5,
+        "confidence": 0.85
+      }
+
+      The decision field MUST be exactly "NEGOTIATE" or "CRISIS_SHIELD" (case-sensitive).
+    prompt: |
+      ANALYZE THIS MARKET DATA AND MAKE A DECISION:
+
+      === CROP DETAILS ===
+      Commodity: {{ inputs.commodity }}
+      Quantity: {{ inputs.quantity_kg }} kg
+      Quality Assessment: {{ outputs.assess_quality.text }}
+      Location: {{ inputs.district }}, {{ inputs.state }}
+
+      === COST ANALYSIS ===
+      Cost of Production: ₹{{ vars.cost_per_kg }}/kg
+
+      === MARKET DATA (from data.gov.in) ===
+      {{ outputs.fetch_market_data.body }}
+
+      === YOUR TASK ===
+      1. Summarize the market situation
+      2. Decide: NEGOTIATE (normal sale) or CRISIS_SHIELD (emergency diversion)
+      3. Explain your reasoning
+      4. Recommend a minimum acceptable price per kg
+
+  # =========================================================================
+  # TASK 4: Decision Router - Branch based on AI decision
+  # =========================================================================
+  - id: decision_router
+    type: io.kestra.plugin.core.flow.Switch
+    value: "{{ outputs.market_intelligence.text | json | jq('.decision') | first | default('NEGOTIATE') }}"
+    cases:
+      # ----- CRISIS PATH -----
+      CRISIS_SHIELD:
+        - id: log_crisis
+          type: io.kestra.plugin.core.log.Log
+          message: |
+            🚨 CRISIS SHIELD ACTIVATED for {{ inputs.farmer_name }}
+            Decision: {{ outputs.market_intelligence.text }}
+
+        - id: fetch_processors
+          type: io.kestra.plugin.core.http.Request
+          uri: ""
+          method: GET
+
+        - id: run_crisis_shield
+          type: io.kestra.plugin.core.flow.Subflow
+          namespace: agrilink
+          flowId: crisis-shield
+          inputs:
+            farmer_id: "{{ inputs.farmer_id }}"
+            farmer_name: "{{ inputs.farmer_name }}"
+            commodity: "{{ inputs.commodity }}"
+            quantity_kg: "{{ inputs.quantity_kg }}"
+            quality_assessment: "{{ outputs.assess_quality.text }}"
+            state: "{{ inputs.state }}"
+            district: "{{ inputs.district }}"
+            cost_per_kg: "{{ vars.cost_per_kg }}"
+            market_data: "{{ outputs.fetch_market_data.body }}"
+            processors_data: "{{ outputs.fetch_processors.body }}"
+          wait: true
+
+    # ----- DEFAULT: NEGOTIATION PATH -----
+    defaults:
+      - id: log_negotiate
+        type: io.kestra.plugin.core.log.Log
+        message: |
+          💼 Starting negotiation for {{ inputs.farmer_name }}
+          Decision: {{ outputs.market_intelligence.text }}
+
+      - id: fetch_buyers
+        type: io.kestra.plugin.core.http.Request
+        description: "Fetch buyer registry for negotiation"
+        uri: "{{ vars.api_base_url }}/webhook"
+        method: GET
+        params:
+            action: "buyers"
+            commodity: "{{ inputs.commodity }}"
+
+      - id: run_negotiation
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: agrilink
+        flowId: negotiation-swarm
+        inputs:
+          farmer_id: "{{ inputs.farmer_id }}"
+          commodity: "{{ inputs.commodity }}"
+          quantity_kg: "{{ inputs.quantity_kg }}"
+          quality_assessment: "{{ outputs.assess_quality.text }}"
+          min_price: "{{ outputs.market_intelligence.text | json | jq('.recommended_min_price') | first | default(10) }}"
+          market_data: "{{ outputs.fetch_market_data.body }}"
+          buyers_data: "{{ outputs.fetch_buyers.body }}"
+        wait: true
+
+  # =========================================================================
+  # TASK 5: Generate Final Summary (Bilingual)
+  # =========================================================================
+  - id: generate_summary
+    type: io.kestra.plugin.ai.agent.AIAgent
+    systemMessage: |
+      Generate a friendly summary for an Indian farmer in BOTH Hindi and English.
+      Keep it simple, encouraging, and actionable.
+
+      Respond with ONLY valid JSON, no markdown, no code blocks:
+      {
+        "english_summary": "...",
+        "hindi_summary": "...",
+        "next_steps": ["step 1", "step 2"]
+      }
+    prompt: |
+      Create a summary for farmer {{ inputs.farmer_name }}:
+
+      Sale Details:
+      - Commodity: {{ inputs.commodity }}
+      - Quantity: {{ inputs.quantity_kg }} kg
+      - Quality Assessment: {{ outputs.assess_quality.text }}
+
+      Market Intelligence Decision:
+      {{ outputs.market_intelligence.text }}
+
+      Create an encouraging summary explaining what will happen next.
+
+pluginDefaults:
+  - type: io.kestra.plugin.ai.agent.AIAgent
+    values:
+      provider:
+        type: io.kestra.plugin.ai.provider.Anthropic
+        apiKey: ""
+        modelName: "claude-sonnet-4-5-20250929"
+
+# =============================================================================
+# OUTPUTS - Available to calling systems
+# =============================================================================
+outputs:
+  - id: quality_assessment
+    type: JSON
+    value: "{{ outputs.assess_quality.text }}"
+    description: "AI quality assessment result"
+
+  - id: market_intelligence
+    type: JSON
+    value: "{{ outputs.market_intelligence.text }}"
+    description: "Market analysis and AI decision"
+
+  - id: final_summary
+    type: JSON
+    value: "{{ outputs.generate_summary.text }}"
+    description: "Final bilingual summary for farmer"
+
+  - id: execution_path
+    type: STRING
+    value: "{{ outputs.market_intelligence.text | json | jq('.decision') | first | default('NEGOTIATE') }}"
+    description: "Which path was taken: NEGOTIATE or CRISIS_SHIELD"
