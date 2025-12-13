@@ -222,12 +222,12 @@ if FASTAPI_AVAILABLE:
     async def get_execution_status(execution_id: str):
         """
         Get current status of an execution.
-        
+
         Poll this endpoint to track workflow progress.
         """
         if not kestra_client:
             raise HTTPException(status_code=503, detail="Kestra client not initialized")
-        
+
         try:
             result = kestra_client.get_execution_status(execution_id)
             return convert_result(result)

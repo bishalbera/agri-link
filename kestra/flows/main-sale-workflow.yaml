@@ -366,3 +366,8 @@ outputs:
     type: STRING
     value: "{{ read(outputs.clean_intelligence_json.outputFiles['intelligence.json']) | jq('.decision') | first }}"
     description: "Which path was taken: NEGOTIATE or CRISIS_SHIELD"
+
+  - id: best_offer
+    type: JSON
+    value: "{{ outputs.run_negotiation.outputs.best_offer | default('{}') }}"
+    description: "Best negotiation offer from negotiation-swarm (if NEGOTIATE path was taken)"

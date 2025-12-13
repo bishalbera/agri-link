@@ -30,7 +30,7 @@ export default function StatusPage() {
       try {
         const res = await fetch(`/api/status?id=${executionId}`);
         const data = await res.json();
-        
+
         if (data.success) {
           setStatus(data.data);
         } else {

@@ -398,10 +398,8 @@ class AgriLinkKestra:
         """
         import requests
 
-        # Use direct HTTP API since SDK doesn't have get_execution method
         url = f"{self.host}/api/v1/{self.tenant}/executions/{execution_id}"
 
-        # Use same auth as _create_execution_via_api
         username = os.getenv("KESTRA_USERNAME", "admin@kestra.io")
         password = os.getenv("KESTRA_PASSWORD", "admin")
 
@@ -468,15 +466,12 @@ class AgriLinkKestra:
         import time
         import signal
 
-        # Use follow_execution for real-time streaming (recommended by Kestra docs)
         start_time = time.time()
         last_result = None
 
-        # Set up timeout handler
         def timeout_handler(signum, frame):
             raise TimeoutError(f"Execution {execution_id} did not complete within {timeout_seconds}s")
 
-        # Set alarm for timeout (Unix-like systems only)
         if hasattr(signal, 'SIGALRM'):
             signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(timeout_seconds)
@@ -485,13 +480,11 @@ class AgriLinkKestra:
             for event in self.follow_execution(execution_id):
                 last_result = event
 
-                # Check if execution completed
                 if not event.is_running():
                     if hasattr(signal, 'SIGALRM'):
                         signal.alarm(0)  # Cancel timeout
                     return event
 
-                # Fallback timeout check for non-Unix systems
                 if time.time() - start_time > timeout_seconds:
                     raise TimeoutError(f"Execution {execution_id} did not complete within {timeout_seconds}s")
 
@@ -503,7 +496,6 @@ class AgriLinkKestra:
                 return self._wait_for_completion_polling(execution_id, timeout_seconds, poll_interval)
             raise
 
-        # If we somehow exit the loop without returning
         if last_result:
             return last_result
 
@@ -539,15 +531,9 @@ class AgriLinkKestra:
 
         raise TimeoutError(f"Execution {execution_id} did not complete within {timeout_seconds}s")
 
-
-
-
 def main():
     
-    # Initialize client
     client = AgriLinkKestra()
-    
-
 
 if __name__ == "__main__":
     main()
