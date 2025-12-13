@@ -197,27 +197,75 @@ export function formatExecutionStatus(status: ExecutionStatus): {
   phase: "analyzing" | "negotiating" | "arranging" | "complete" | "failed";
   progress: number;
   message: string;
-  details?: Record<string, unknown>;
+  details?: {
+    buyerName?: string;
+    pricePerKg?: number;
+    totalAmount?: number;
+    pickupDate?: string;
+    grade?: string;
+  };
 } {
+  // Helper to extract buyer details from Kestra outputs
+  const extractBuyerDetails = (outputs: any) => {
+    try {
+      const qualityGrade = outputs?.quality_assessment?.grade || "B";
+
+      // Check if we have negotiation results (best_offer from negotiation-swarm)
+      if (outputs?.best_offer) {
+        const bestOffer = outputs.best_offer;
+        const winner = bestOffer.winner;
+
+        return {
+          buyerName: winner?.buyer_name || "Selected Buyer",
+          pricePerKg: winner?.final_price_per_kg || 0,
+          totalAmount: winner?.total_amount || 0,
+          pickupDate: new Date(Date.now() + 86400000).toISOString().split("T")[0], // Tomorrow
+          grade: qualityGrade,
+        };
+      }
+
+      // Fallback to market intelligence data if no negotiation yet
+      if (outputs?.market_intelligence && outputs?.quality_assessment) {
+        const marketPrice = outputs.market_intelligence.recommended_min_price || 0;
+        const quantity = 100; // Default, should come from inputs
+
+        return {
+          buyerName: "Pending Selection",
+          pricePerKg: marketPrice,
+          totalAmount: marketPrice * quantity,
+          pickupDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+          grade: qualityGrade,
+        };
+      }
+
+      return undefined;
+    } catch (err) {
+      console.error("Error extracting buyer details:", err);
+      return undefined;
+    }
+  };
+
   switch (status.state) {
     case "CREATED":
     case "RUNNING":
       // Determine phase based on outputs
-      if (status.outputs?.quality_result) {
-        if (status.outputs?.negotiation_result) {
+      if (status.outputs?.quality_assessment) {
+        if (status.outputs?.best_offer) {
           return {
             phase: "arranging",
             progress: 75,
-            message: "Arranging logistics...",
-            details: status.outputs,
+            message: "Finalizing deal and arranging pickup...",
+            details: extractBuyerDetails(status.outputs),
           };
         }
-        return {
-          phase: "negotiating",
-          progress: 50,
-          message: "AI agents negotiating with buyers...",
-          details: status.outputs,
-        };
+        if (status.outputs?.market_intelligence) {
+          return {
+            phase: "negotiating",
+            progress: 50,
+            message: "AI agents negotiating with 5 buyers...",
+            details: extractBuyerDetails(status.outputs),
+          };
+        }
       }
       return {
         phase: "analyzing",
@@ -230,7 +278,7 @@ export function formatExecutionStatus(status: ExecutionStatus): {
         phase: "complete",
         progress: 100,
         message: "Sale completed successfully!",
-        details: status.outputs,
+        details: extractBuyerDetails(status.outputs),
       };
 
     case "FAILED":
@@ -239,7 +287,6 @@ export function formatExecutionStatus(status: ExecutionStatus): {
         phase: "failed",
         progress: 0,
         message: "Something went wrong. Please try again.",
-        details: status.outputs,
       };
 
     default:

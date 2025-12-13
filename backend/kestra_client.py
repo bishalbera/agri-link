@@ -388,25 +388,41 @@ class AgriLinkKestra:
     
     def get_execution_status(self, execution_id: str) -> ExecutionResult:
         """
-        Get current status of an execution.
-        
+        Get current status of an execution using direct HTTP API.
+
         Args:
             execution_id: Kestra execution ID
-            
+
         Returns:
             ExecutionResult with current state
         """
-        execution = self.client.executions.get_execution(
-            tenant=self.tenant,
-            execution_id=execution_id
+        import requests
+
+        # Use direct HTTP API since SDK doesn't have get_execution method
+        url = f"{self.host}/api/v1/{self.tenant}/executions/{execution_id}"
+
+        # Use same auth as _create_execution_via_api
+        username = os.getenv("KESTRA_USERNAME", "admin@kestra.io")
+        password = os.getenv("KESTRA_PASSWORD", "admin")
+
+        response = requests.get(
+            url,
+            auth=(username, password) if username and password else None,
+            timeout=30
         )
-        
+
+        if not response.ok:
+            error_msg = f"Kestra API error: {response.status_code} - {response.text}"
+            raise Exception(error_msg)
+
+        data = response.json()
+
         return ExecutionResult(
-            execution_id=execution.id,
-            state=execution.state.current,
-            namespace=execution.namespace,
-            flow_id=execution.flow_id,
-            outputs=execution.outputs if hasattr(execution, 'outputs') else None
+            execution_id=data.get('id', execution_id),
+            state=data.get('state', {}).get('current', 'UNKNOWN'),
+            namespace=data.get('namespace', self.NAMESPACE),
+            flow_id=data.get('flowId', ''),
+            outputs=data.get('outputs')
         )
     
     def follow_execution(self, execution_id: str) -> Generator[ExecutionResult, None, None]:
@@ -439,27 +455,88 @@ class AgriLinkKestra:
         poll_interval: int = 2
     ) -> ExecutionResult:
         """
-        Wait for an execution to complete.
-        
+        Wait for an execution to complete using follow_execution (more efficient than polling).
+
         Args:
             execution_id: Kestra execution ID
             timeout_seconds: Maximum wait time
-            poll_interval: Seconds between status checks
-            
+            poll_interval: Seconds between status checks (unused, kept for compatibility)
+
         Returns:
             Final ExecutionResult
         """
         import time
-        
+        import signal
+
+        # Use follow_execution for real-time streaming (recommended by Kestra docs)
+        start_time = time.time()
+        last_result = None
+
+        # Set up timeout handler
+        def timeout_handler(signum, frame):
+            raise TimeoutError(f"Execution {execution_id} did not complete within {timeout_seconds}s")
+
+        # Set alarm for timeout (Unix-like systems only)
+        if hasattr(signal, 'SIGALRM'):
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(timeout_seconds)
+
+        try:
+            for event in self.follow_execution(execution_id):
+                last_result = event
+
+                # Check if execution completed
+                if not event.is_running():
+                    if hasattr(signal, 'SIGALRM'):
+                        signal.alarm(0)  # Cancel timeout
+                    return event
+
+                # Fallback timeout check for non-Unix systems
+                if time.time() - start_time > timeout_seconds:
+                    raise TimeoutError(f"Execution {execution_id} did not complete within {timeout_seconds}s")
+
+        except Exception as e:
+            if hasattr(signal, 'SIGALRM'):
+                signal.alarm(0)  # Cancel timeout
+            # If follow_execution fails, fall back to polling
+            if "follow_execution" in str(e).lower():
+                return self._wait_for_completion_polling(execution_id, timeout_seconds, poll_interval)
+            raise
+
+        # If we somehow exit the loop without returning
+        if last_result:
+            return last_result
+
+        raise TimeoutError(f"Execution {execution_id} did not complete within {timeout_seconds}s")
+
+    def _wait_for_completion_polling(
+        self,
+        execution_id: str,
+        timeout_seconds: int = 300,
+        poll_interval: int = 2
+    ) -> ExecutionResult:
+        """
+        Fallback polling method for wait_for_completion.
+
+        Args:
+            execution_id: Kestra execution ID
+            timeout_seconds: Maximum wait time
+            poll_interval: Seconds between status checks
+
+        Returns:
+            Final ExecutionResult
+        """
+        import time
+
         start_time = time.time()
         while time.time() - start_time < timeout_seconds:
             result = self.get_execution_status(execution_id)
-            
+
             if not result.is_running():
                 return result
-            
+
             time.sleep(poll_interval)
-        
+
         raise TimeoutError(f"Execution {execution_id} did not complete within {timeout_seconds}s")
 
 
