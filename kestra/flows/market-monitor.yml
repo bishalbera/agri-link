@@ -210,5 +210,5 @@ pluginDefaults:
     values:
       provider:
         type: io.kestra.plugin.ai.provider.Anthropic
-        apiKey: "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"
+        apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
         modelName: "claude-sonnet-4-5-20250929"
