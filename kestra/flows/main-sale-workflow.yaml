@@ -340,7 +340,7 @@ pluginDefaults:
     values:
       provider:
         type: io.kestra.plugin.ai.provider.Anthropic
-        apiKey: " "
+        apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
         modelName: "claude-sonnet-4-5-20250929"
 
 # =============================================================================

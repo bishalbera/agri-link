@@ -45,7 +45,6 @@ class AgriLinkKestra:
     - Result retrieval
     """
     
-    # Default namespace for all Agri-Link flows
     NAMESPACE = "agrilink"
     
     # Flow IDs
@@ -142,9 +141,9 @@ class AgriLinkKestra:
         govdata_key = os.getenv("GOVDATA_API_KEY", "")
 
         if not anthropic_key:
-            print("⚠️  Warning: ANTHROPIC_API_KEY not set in environment")
+            print("Warning: ANTHROPIC_API_KEY not set in environment")
         if not govdata_key:
-            print("⚠️  Warning: GOVDATA_API_KEY not set in environment")
+            print("Warning: GOVDATA_API_KEY not set in environment")
 
         # Replace Anthropic API key patterns
         # Pattern 1: {{ secret('ANTHROPIC_API_KEY') }} with quotes
@@ -232,18 +231,13 @@ class AgriLinkKestra:
         if wait:
             params['wait'] = 'true'
 
-        # Prepare inputs as multipart/form-data
-        # Each input becomes a form field
         files = {}
         for key, value in inputs.items():
-            # Convert value to string for form data
             files[key] = (None, str(value))
 
-        # Get credentials for basic auth
         username = os.getenv("KESTRA_USERNAME", "admin@kestra.io")
         password = os.getenv("KESTRA_PASSWORD", "admin")
 
-        # Make POST request
         response = requests.post(
             url,
             files=files,
@@ -252,12 +246,10 @@ class AgriLinkKestra:
             timeout=30
         )
 
-        # Check response
         if not response.ok:
             error_msg = f"Kestra API error: {response.status_code} - {response.text}"
             raise Exception(error_msg)
 
-        # Parse response
         data = response.json()
 
         return ExecutionResult(
@@ -317,7 +309,6 @@ class AgriLinkKestra:
             "cost_of_production": cost_of_production,
         }
 
-        # Use direct API call with multipart/form-data for inputs
         return self._create_execution_via_api(
             flow_id=self.FLOW_MAIN_SALE,
             inputs=inputs,
@@ -361,7 +352,6 @@ class AgriLinkKestra:
             "quality_grade": quality_grade,
         }
 
-        # Use direct API call with multipart/form-data for inputs
         return self._create_execution_via_api(
             flow_id=self.FLOW_CRISIS_SHIELD,
             inputs=inputs,
@@ -390,7 +380,6 @@ class AgriLinkKestra:
             "state": state,
         }
 
-        # Use direct API call with multipart/form-data for inputs
         return self._create_execution_via_api(
             flow_id=self.FLOW_MARKET_MONITOR,
             inputs=inputs,
@@ -434,7 +423,6 @@ class AgriLinkKestra:
             execution_id=execution_id,
             tenant=self.tenant
         ):
-            # Skip empty keepalive events
             if event and hasattr(event, 'state'):
                 yield ExecutionResult(
                     execution_id=execution_id,
@@ -475,97 +463,13 @@ class AgriLinkKestra:
         raise TimeoutError(f"Execution {execution_id} did not complete within {timeout_seconds}s")
 
 
-# ============================================================================
-# CLI Interface
-# ============================================================================
+
 
 def main():
-    """Command-line interface for Agri-Link Kestra operations."""
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="Agri-Link Kestra Client")
-    subparsers = parser.add_subparsers(dest="command", help="Commands")
-    
-    # Deploy command
-    deploy_parser = subparsers.add_parser("deploy", help="Deploy flows to Kestra")
-    deploy_parser.add_argument("--directory", "-d", default="./kestra/flows",
-                               help="Directory containing flow YAML files")
-    
-    # Start sale command
-    sale_parser = subparsers.add_parser("sale", help="Start a new sale")
-    sale_parser.add_argument("--farmer-id", required=True, help="Farmer ID")
-    sale_parser.add_argument("--commodity", default="Tomato", help="Crop type")
-    sale_parser.add_argument("--quantity", type=int, default=100, help="Quantity in kg")
-    sale_parser.add_argument("--state", default="Maharashtra", help="State name")
-    sale_parser.add_argument("--wait", action="store_true", help="Wait for completion")
-    
-    # Status command
-    status_parser = subparsers.add_parser("status", help="Get execution status")
-    status_parser.add_argument("execution_id", help="Execution ID")
-    
-    # Follow command
-    follow_parser = subparsers.add_parser("follow", help="Follow execution in real-time")
-    follow_parser.add_argument("execution_id", help="Execution ID")
-    
-    # Monitor command
-    monitor_parser = subparsers.add_parser("monitor", help="Start market monitor")
-    monitor_parser.add_argument("--commodities", default="Tomato,Potato,Onion",
-                                help="Commodities to monitor")
-    monitor_parser.add_argument("--state", default="Maharashtra", help="State to monitor")
-    
-    args = parser.parse_args()
-    
-    if not args.command:
-        parser.print_help()
-        return
     
     # Initialize client
     client = AgriLinkKestra()
     
-    if args.command == "deploy":
-        print(f"Deploying flows from {args.directory}...")
-        results = client.deploy_all_flows(args.directory)
-        for flow_name, result in results.items():
-            status = "✅" if result.get("success") else "❌"
-            print(f"  {status} {flow_name}: {result.get('status', result.get('error'))}")
-    
-    elif args.command == "sale":
-        print(f"Starting sale for farmer {args.farmer_id}...")
-        result = client.start_sale(
-            farmer_id=args.farmer_id,
-            commodity=args.commodity,
-            quantity_kg=args.quantity,
-            state=args.state,
-            wait=args.wait
-        )
-        print(f"Execution ID: {result.execution_id}")
-        print(f"State: {result.state}")
-        if result.outputs:
-            print(f"Outputs: {json.dumps(result.outputs, indent=2)}")
-    
-    elif args.command == "status":
-        result = client.get_execution_status(args.execution_id)
-        print(f"Execution: {result.execution_id}")
-        print(f"State: {result.state}")
-        print(f"Flow: {result.namespace}/{result.flow_id}")
-        if result.outputs:
-            print(f"Outputs: {json.dumps(result.outputs, indent=2)}")
-    
-    elif args.command == "follow":
-        print(f"Following execution {args.execution_id}...")
-        for event in client.follow_execution(args.execution_id):
-            print(f"  State: {event.state}")
-            if not event.is_running():
-                break
-        print("Execution completed.")
-    
-    elif args.command == "monitor":
-        print(f"Starting market monitor for {args.commodities} in {args.state}...")
-        result = client.start_market_monitor(
-            commodities=args.commodities,
-            state=args.state
-        )
-        print(f"Execution ID: {result.execution_id}")
 
 
 if __name__ == "__main__":

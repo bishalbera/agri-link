@@ -1,19 +1,3 @@
-#!/usr/bin/env python3
-"""
-Agri-Link Kestra API Server
-============================
-A lightweight FastAPI server that wraps the Kestra Python SDK.
-This provides a clean REST API for the Next.js frontend.
-
-Install dependencies:
-    pip install fastapi uvicorn kestrapy python-dotenv
-
-Run:
-    uvicorn kestra_api:app --host 0.0.0.0 --port 8000 --reload
-
-The Next.js app can then call this API instead of Kestra directly,
-getting the benefits of the Python SDK.
-"""
 
 import os
 import json
@@ -33,11 +17,6 @@ except ImportError:
     print("FastAPI not installed. Run: pip install fastapi uvicorn")
 
 from kestra_client import AgriLinkKestra, ExecutionResult
-
-
-# ============================================================================
-# Pydantic Models
-# ============================================================================
 
 class SaleRequest(BaseModel):
     """Request model for starting a sale"""
@@ -82,11 +61,6 @@ class ExecutionResponse(BaseModel):
     is_running: bool = False
 
 
-# ============================================================================
-# FastAPI Application
-# ============================================================================
-
-# Global client instance
 kestra_client: Optional[AgriLinkKestra] = None
 
 
@@ -113,12 +87,12 @@ async def lifespan(app: FastAPI):
                         status_msg = f"error: {result.get('error', 'unknown')}"
                     print(f"  {status_icon} {flow_name}: {status_msg}")
             except Exception as e:
-                print(f"⚠️ Flow deployment failed: {e}")
+                print(f"Flow deployment failed: {e}")
                 print("  Note: Flows can still be deployed manually via /api/deploy endpoint")
         else:
             print(f"⚠️ Flows directory not found: {flows_dir}")
     except Exception as e:
-        print(f"❌ Failed to initialize Kestra client: {e}")
+        print(f"Failed to initialize Kestra client: {e}")
         kestra_client = None
     yield
     kestra_client = None
@@ -153,10 +127,6 @@ def convert_result(result: ExecutionResult) -> ExecutionResponse:
         is_running=result.is_running()
     )
 
-
-# ============================================================================
-# API Endpoints
-# ============================================================================
 
 if FASTAPI_AVAILABLE:
     @app.get("/health")
@@ -285,10 +255,6 @@ if FASTAPI_AVAILABLE:
             raise HTTPException(status_code=500, detail=str(e))
 
 
-# ============================================================================
-# Main
-# ============================================================================
-
 def main():
     """Run the API server"""
     if not FASTAPI_AVAILABLE:
@@ -302,14 +268,9 @@ def main():
     port = int(os.getenv("API_PORT", "8000"))
     
     print(f"""
-    ╔═══════════════════════════════════════════════════════════╗
-    ║                                                           ║
-    ║   🌾 Agri-Link Kestra API Server                         ║
-    ║   ─────────────────────────────────────────────────       ║
-    ║   Running on: http://{host}:{port}                          ║
-    ║   Docs: http://{host}:{port}/docs                           ║
-    ║                                                           ║
-    ╚═══════════════════════════════════════════════════════════╝
+      Agri-Link Kestra API Server                         
+      Running on: http://{host}:{port}                          
+      Docs: http://{host}:{port}/docs                           
     """)
     
     uvicorn.run(
