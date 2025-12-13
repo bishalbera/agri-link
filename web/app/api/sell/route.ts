@@ -1,4 +1,3 @@
-// app/api/sell/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { startSaleWorkflow } from "@/lib/kestraClient";
 import { analyzeMarket } from "@/lib/dataGovApi";
@@ -29,7 +28,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get market analysis first
     let marketAnalysis;
     try {
       marketAnalysis = await analyzeMarket(commodity, state, costOfProduction);
@@ -42,7 +40,6 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Try to trigger Kestra workflow
     let executionId = null;
     try {
       const result = await startSaleWorkflow({
@@ -59,7 +56,6 @@ export async function POST(request: NextRequest) {
       executionId = result.executionId;
     } catch (error) {
       console.error("Kestra trigger error:", error);
-      // Generate demo execution ID for hackathon demo
       executionId = `demo_${Date.now()}`;
     }
 

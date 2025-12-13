@@ -1,21 +1,9 @@
-# kestra/flows/negotiation-swarm.yaml
-# =============================================================================
-# NEGOTIATION SWARM - 5 Parallel AI Negotiators
-# =============================================================================
-# Each AI agent uses a different negotiation strategy with REAL buyers
-# from our registry. They compete to get the best price for the farmer.
-# =============================================================================
-
 id: negotiation-swarm
 namespace: agrilink
 
 description: |
   5 AI negotiators with different strategies compete in parallel
   to find the best deal from REAL buyers in our registry.
-
-labels:
-  project: agri-link
-  feature: parallel-negotiation
 
 inputs:
   - id: farmer_id
@@ -48,13 +36,17 @@ inputs:
 
 variables:
   # Parse quality grade
-  quality_grade: "{{ inputs.quality_assessment | json | jq('.grade') | first | default('B') }}"
+  quality_grade: "{{ inputs.quality_assessment | jq('.grade') | first | default('B') }}"
 
-  # Parse market price
-  market_price: "{{ inputs.market_data | json | jq('.currentPrice') | first | default(0) }}"
+
+  market_price: "{{ inputs.market_data | jq('.currentPrice') | first | default(0) }}"
+
+  
+  anchor_high_target: "{{ inputs.market_data | jq('.currentPrice * 1.3') | first | default(0) }}"
+  quality_premium_target: "{{ inputs.market_data | jq('.currentPrice * 1.2') | first | default(0) }}"
 
   # Convert buyers JSON to readable string for AI agents
-  buyers_list: "{{ inputs.buyers_data | json | jq('.[] | \"- \" + .name + \" (\" + .type + \"): Capacity \" + (.volumeCapacity|tostring) + \"kg, Payment: \" + .paymentTerms + \", Rating: \" + (.rating|tostring)') | join('\n') }}"
+  buyers_list: "{{ inputs.buyers_data | jq('.[] | \"- \" + .name + \" (\" + .type + \"): Capacity \" + (.volumeCapacity|tostring) + \"kg, Payment: \" + .paymentTerms + \", Rating: \" + (.rating|tostring)') | join('\n') }}"
 
 tasks:
   # =========================================================================
@@ -97,7 +89,7 @@ tasks:
           === PRICING ===
           Market Price: ₹{{ vars.market_price }}/kg
           Minimum Acceptable: ₹{{ inputs.min_price }}/kg
-          Your Target: Start at ₹{{ vars.market_price * 1.3 }}/kg (30% premium)
+          Your Target: Start at ₹{{ vars.anchor_high_target }}/kg (30% premium)
 
           === AVAILABLE BUYERS ===
           {{ vars.buyers_list }}
@@ -242,7 +234,7 @@ tasks:
           === PRICING ===
           Market Price: ₹{{ vars.market_price }}/kg
           Minimum: ₹{{ inputs.min_price }}/kg
-          Target: ₹{{ vars.market_price * 1.2 }}/kg (20% quality premium)
+          Target: ₹{{ vars.quality_premium_target }}/kg (20% quality premium)
 
           === AVAILABLE BUYERS ===
           {{ vars.buyers_list }}
@@ -290,22 +282,46 @@ tasks:
       === NEGOTIATION RESULTS ===
 
       1. ANCHOR HIGH:
-      {{ outputs.agent_anchor_high.text }}
+      {{ outputs.agent_anchor_high.textOutput }}
 
       2. VOLUME PLAY:
-      {{ outputs.agent_volume_play.text }}
+      {{ outputs.agent_volume_play.textOutput }}
 
       3. URGENCY:
-      {{ outputs.agent_urgency.text }}
+      {{ outputs.agent_urgency.textOutput }}
 
       4. RELATIONSHIP:
-      {{ outputs.agent_relationship.text }}
+      {{ outputs.agent_relationship.textOutput }}
 
       5. QUALITY PREMIUM:
-      {{ outputs.agent_quality_premium.text }}
+      {{ outputs.agent_quality_premium.textOutput }}
 
       === YOUR TASK ===
       Select the BEST offer for the farmer. Explain why.
+
+  # =========================================================================
+  # CLEAN JSON OUTPUT from select_best_offer
+  # =========================================================================
+  - id: clean_best_offer_json
+    type: io.kestra.plugin.scripts.python.Script
+    description: "Extract clean JSON from AI response (removes markdown fences)"
+    outputFiles:
+      - best_offer.json
+    script: |
+      import json
+      import re
+
+      raw_output = """{{ outputs.select_best_offer.textOutput }}"""
+
+      # Remove markdown code fences if present
+      cleaned = re.sub(r'^```json\s*|\s*```$', '', raw_output.strip(), flags=re.MULTILINE)
+
+      # Parse and validate
+      data = json.loads(cleaned)
+
+      # Write to output file
+      with open('best_offer.json', 'w') as f:
+          json.dump(data, f)
 
 # =============================================================================
 # OUTPUTS
@@ -313,18 +329,7 @@ tasks:
 outputs:
   - id: best_offer
     type: JSON
-    value: "{{ outputs.select_best_offer.text }}"
-
-  - id: all_negotiations
-    type: JSON
-    value: |
-      {
-        "anchor_high": {{ outputs.agent_anchor_high.text }},
-        "volume_play": {{ outputs.agent_volume_play.text }},
-        "urgency": {{ outputs.agent_urgency.text }},
-        "relationship": {{ outputs.agent_relationship.text }},
-        "quality_premium": {{ outputs.agent_quality_premium.text }}
-      }
+    value: "{{ read(outputs.clean_best_offer_json.outputFiles['best_offer.json']) }}"
 
 pluginDefaults:
   - type: io.kestra.plugin.ai.agent.AIAgent

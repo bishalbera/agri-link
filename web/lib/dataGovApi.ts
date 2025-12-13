@@ -1,5 +1,3 @@
-// lib/dataGovApi.ts
-// Government of India Open Data API Wrapper for Mandi Prices
 
 const API_KEY = process.env.GOVDATA_API_KEY;
 const BASE_URL = "https://api.data.gov.in/resource";

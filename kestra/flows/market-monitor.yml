@@ -1,21 +1,9 @@
-# kestra/flows/market-monitor.yml
-# =============================================================================
-# MARKET MONITOR - Proactive Price Monitoring
-# =============================================================================
-# Scheduled workflow that monitors market prices and alerts farmers
-# BEFORE a full crisis develops.
-# =============================================================================
-
 id: market-monitor
 namespace: agrilink
 
 description: |
   Scheduled workflow that monitors commodity prices across markets.
   Detects price drops and sends early warnings to farmers.
-
-labels:
-  project: agri-link
-  feature: early-warning
 
 # Run every hour during market hours
 triggers:
@@ -41,7 +29,7 @@ inputs:
     defaults: 15
 
 variables:
-  api_base_url: "{{ kv('AGRILINK_API_BASE_URL') | default('http://localhost:3000/api') }}"
+  api_base_url: "http://host.docker.internal:3000/api"
 
 tasks:
   # =========================================================================
@@ -127,18 +115,42 @@ tasks:
       Provide comprehensive market analysis and identify any commodities at risk.
 
   # =========================================================================
+  # TASK 2.5: Clean Market Analysis JSON
+  # =========================================================================
+  - id: clean_analysis_json
+    type: io.kestra.plugin.scripts.python.Script
+    description: "Extract clean JSON from AI response (removes markdown fences)"
+    outputFiles:
+      - analysis.json
+    script: |
+      import json
+      import re
+      
+      raw_output = """{{ outputs.analyze_market_trends.textOutput }}"""
+      
+      # Remove markdown code fences if present
+      cleaned = re.sub(r'^```json\s*|\s*```$', '', raw_output.strip(), flags=re.MULTILINE)
+      
+      # Parse and validate
+      data = json.loads(cleaned)
+      
+      # Write to output file
+      with open('analysis.json', 'w') as f:
+          json.dump(data, f)
+
+  # =========================================================================
   # TASK 3: Generate Alerts if Needed
   # =========================================================================
   - id: check_for_alerts
     type: io.kestra.plugin.core.flow.If
-    condition: "{{ outputs.analyze_market_trends.text | json | jq('.market_health') | first != 'HEALTHY' }}"
+    condition: "{{ read(outputs.clean_analysis_json.outputFiles['analysis.json']) | jq('.market_health') | first != 'HEALTHY' }}"
     then:
       - id: log_alert
         type: io.kestra.plugin.core.log.Log
         message: |
           ⚠️ MARKET ALERT GENERATED
           ══════════════════════════════════════
-          {{ outputs.analyze_market_trends.text }}
+          {{ read(outputs.clean_analysis_json.outputFiles['analysis.json']) }}
           ══════════════════════════════════════
 
       # In production, this would send SMS/push notifications
@@ -155,7 +167,31 @@ tasks:
           }
         prompt: |
           Create farmer alert based on this analysis:
-          {{ outputs.analyze_market_trends.text }}
+          {{ read(outputs.clean_analysis_json.outputFiles['analysis.json']) }}
+
+      # =========================================================================
+      # TASK 3.5: Clean Alert JSON
+      # =========================================================================
+      - id: clean_alert_json
+        type: io.kestra.plugin.scripts.python.Script
+        description: "Extract clean JSON from farmer alert"
+        outputFiles:
+          - alert.json
+        script: |
+          import json
+          import re
+          
+          raw_output = """{{ outputs.generate_farmer_alert.textOutput }}"""
+          
+          # Remove markdown code fences if present
+          cleaned = re.sub(r'^```json\s*|\s*```$', '', raw_output.strip(), flags=re.MULTILINE)
+          
+          # Parse and validate
+          data = json.loads(cleaned)
+          
+          # Write to output file
+          with open('alert.json', 'w') as f:
+              json.dump(data, f)
 
 # =============================================================================
 # OUTPUTS
@@ -163,7 +199,7 @@ tasks:
 outputs:
   - id: market_analysis
     type: JSON
-    value: "{{ outputs.analyze_market_trends.text }}"
+    value: "{{ read(outputs.clean_analysis_json.outputFiles['analysis.json']) }}"
 
   - id: monitoring_timestamp
     type: STRING
@@ -174,5 +210,5 @@ pluginDefaults:
     values:
       provider:
         type: io.kestra.plugin.ai.provider.Anthropic
-        apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
+        apiKey: "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"
         modelName: "claude-sonnet-4-5-20250929"

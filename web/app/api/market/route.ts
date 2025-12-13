@@ -1,4 +1,3 @@
-// app/api/market/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeMarket, COST_OF_PRODUCTION } from "@/lib/dataGovApi";
 
@@ -29,7 +28,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[Market API Error]", error);
 
-    // Return demo data on error (for hackathon demo)
     return NextResponse.json({
       success: true,
       data: {

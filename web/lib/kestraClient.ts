@@ -1,12 +1,7 @@
-// lib/kestraClient.ts
-// Kestra API Client for workflow orchestration
-//
-// This client communicates with the FastAPI backend which uses the Kestra Python SDK.
-// Architecture: Next.js → FastAPI (Python) → Kestra SDK → Kestra
-//
-// FastAPI Backend: See backend/kestra_api.py
-
-const FASTAPI_URL = process.env.FASTAPI_URL || process.env.NEXT_PUBLIC_FASTAPI_URL || "http://localhost:8000";
+const FASTAPI_URL =
+  process.env.FASTAPI_URL ||
+  process.env.NEXT_PUBLIC_FASTAPI_URL ||
+  "http://localhost:8000";
 const KESTRA_NAMESPACE = process.env.KESTRA_NAMESPACE || "agrilink";
 const KESTRA_TENANT = process.env.KESTRA_TENANT || "default";
 
@@ -32,7 +27,15 @@ export interface ExecutionResponse {
 
 export interface ExecutionStatus {
   id: string;
-  state: "CREATED" | "RUNNING" | "SUCCESS" | "WARNING" | "FAILED" | "KILLING" | "KILLED" | "PAUSED";
+  state:
+    | "CREATED"
+    | "RUNNING"
+    | "SUCCESS"
+    | "WARNING"
+    | "FAILED"
+    | "KILLING"
+    | "KILLED"
+    | "PAUSED";
   startDate: string;
   endDate?: string;
   duration?: number;
@@ -44,21 +47,11 @@ export interface ExecutionStatus {
   }>;
 }
 
-/**
- * Get headers for FastAPI requests
- */
 function getHeaders(): HeadersInit {
   return {
     "Content-Type": "application/json",
-    // FastAPI handles Kestra authentication internally
   };
 }
-
-/**
- * Trigger a Kestra workflow execution via FastAPI backend
- *
- * FastAPI endpoint maps to appropriate workflow based on flowId
- */
 export async function triggerExecution(
   flowId: string,
   inputs: Record<string, unknown>
@@ -67,7 +60,6 @@ export async function triggerExecution(
     throw new Error("FastAPI configuration missing. Set FASTAPI_URL");
   }
 
-  // Map flowId to FastAPI endpoint
   const endpointMap: Record<string, string> = {
     "main-sale-workflow": "/api/sale",
     "crisis-shield": "/api/crisis",
@@ -112,12 +104,9 @@ export async function triggerExecution(
   };
 }
 
-/**
- * Get execution status via FastAPI backend
- *
- * FastAPI endpoint: GET /api/execution/{execution_id}
- */
-export async function getExecutionStatus(executionId: string): Promise<ExecutionStatus> {
+export async function getExecutionStatus(
+  executionId: string
+): Promise<ExecutionStatus> {
   if (!FASTAPI_URL) {
     throw new Error("FastAPI configuration missing");
   }
@@ -145,22 +134,16 @@ export async function getExecutionStatus(executionId: string): Promise<Execution
   };
 }
 
-/**
- * Get task outputs from an execution
- */
 export async function getTaskOutputs(
   executionId: string,
   taskId: string
 ): Promise<Record<string, unknown> | null> {
   const status = await getExecutionStatus(executionId);
-  
-  const taskRun = status.taskRunList?.find(t => t.taskId === taskId);
+
+  const taskRun = status.taskRunList?.find((t) => t.taskId === taskId);
   return taskRun?.outputs || null;
 }
 
-/**
- * Wait for execution to complete (with timeout)
- */
 export async function waitForExecution(
   executionId: string,
   timeoutMs: number = 300000, // 5 minutes default
@@ -175,16 +158,12 @@ export async function waitForExecution(
       return status;
     }
 
-    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 
   throw new Error(`Execution ${executionId} timed out after ${timeoutMs}ms`);
 }
 
-/**
- * Simplified execution trigger for Agri-Link workflows
- * Calls FastAPI backend which uses Kestra Python SDK
- */
 export async function startSaleWorkflow(params: {
   farmerId: string;
   farmerName: string;
@@ -214,9 +193,6 @@ export async function startSaleWorkflow(params: {
   return { executionId: execution.id };
 }
 
-/**
- * Format execution status for frontend display
- */
 export function formatExecutionStatus(status: ExecutionStatus): {
   phase: "analyzing" | "negotiating" | "arranging" | "complete" | "failed";
   progress: number;

@@ -1,31 +1,10 @@
-#!/usr/bin/env python3
-"""
-Agri-Link Kestra Client
-=======================
-Python SDK client for interacting with Kestra workflows programmatically.
-
-Install dependencies:
-    pip install kestrapy python-dotenv
-
-Usage:
-    from kestra_client import AgriLinkKestra
-    
-    client = AgriLinkKestra()
-    execution = client.start_sale(
-        farmer_id="farmer_123",
-        commodity="Tomato",
-        quantity_kg=500,
-        state="Maharashtra"
-    )
-"""
-
 import os
 import json
+import requests
 from typing import Optional, Dict, Any, Generator
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 try:
@@ -80,8 +59,7 @@ class AgriLinkKestra:
         host: Optional[str] = None,
         username: Optional[str] = None,
         password: Optional[str] = None,
-        api_token: Optional[str] = None,
-        tenant: str = "default"
+        tenant: str = "main"
     ):
         """
         Initialize Kestra client.
@@ -90,40 +68,37 @@ class AgriLinkKestra:
             host: Kestra server URL (default: from KESTRA_HOST env)
             username: Username for basic auth (default: from KESTRA_USERNAME env)
             password: Password for basic auth (default: from KESTRA_PASSWORD env)
-            api_token: API token for token auth (default: from KESTRA_API_TOKEN env)
             tenant: Tenant ID (default: "default")
         """
         if not KESTRAPY_AVAILABLE:
             raise ImportError("kestrapy is required. Install with: pip install kestrapy")
         
         self.host = host or os.getenv("KESTRA_HOST", "http://localhost:8080")
-        self.tenant = tenant or os.getenv("KESTRA_TENANT", "default")
-        
-        # Configure authentication
+        self.tenant = tenant or os.getenv("KESTRA_TENANT", "main")
+
         config_params = {"host": self.host}
-        
-        # Prefer API token if available
-        api_token = api_token or os.getenv("KESTRA_API_TOKEN")
-        if api_token:
-            config_params["api_token"] = api_token
-        else:
-            # Fall back to basic auth
-            config_params["username"] = username or os.getenv("KESTRA_USERNAME", "admin@kestra.io")
-            config_params["password"] = password or os.getenv("KESTRA_PASSWORD", "admin")
+        config_params["username"] = username or os.getenv("KESTRA_USERNAME", "admin@kestra.io")
+        config_params["password"] = password or os.getenv("KESTRA_PASSWORD", "admin")
         
         self.configuration = Configuration(**config_params)
         self.client = KestraClient(self.configuration)
-        
+
     def deploy_flow(self, flow_yaml: str) -> Dict[str, Any]:
         """
         Deploy or update a flow from YAML.
-        
+
+        This method automatically injects required API keys from environment variables
+        into the flow YAML before deployment.
+
         Args:
             flow_yaml: YAML string containing flow definition
-            
+
         Returns:
             Flow metadata from Kestra
         """
+        # Inject API keys from environment into the flow YAML
+        flow_yaml = self._inject_api_keys(flow_yaml)
+
         try:
             # Try to create first
             result = self.client.flows.create_flow(
@@ -132,7 +107,8 @@ class AgriLinkKestra:
             )
             return {"status": "created", "flow": result}
         except Exception as e:
-            if "already exists" in str(e).lower() or "409" in str(e):
+            error_str = str(e).lower()
+            if "already exists" in error_str or "409" in error_str or "conflict" in error_str:
                 # Flow exists, update it
                 # Extract flow ID and namespace from YAML
                 import yaml
@@ -145,22 +121,78 @@ class AgriLinkKestra:
                 )
                 return {"status": "updated", "flow": result}
             raise
-    
+
+    def _inject_api_keys(self, flow_yaml: str) -> str:
+        """
+        Inject API keys from environment variables into flow YAML.
+
+        Replaces:
+        - {{ secret('ANTHROPIC_API_KEY') }} with actual Anthropic API key
+        - Empty apiKey: "" with actual Anthropic API key
+        - {{ secret('GOVDATA_API_KEY') }} with actual Gov Data API key
+
+        Args:
+            flow_yaml: Original flow YAML string
+
+        Returns:
+            Flow YAML with injected API keys
+        """
+        # Get API keys from environment
+        anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+        govdata_key = os.getenv("GOVDATA_API_KEY", "")
+
+        if not anthropic_key:
+            print("⚠️  Warning: ANTHROPIC_API_KEY not set in environment")
+        if not govdata_key:
+            print("⚠️  Warning: GOVDATA_API_KEY not set in environment")
+
+        # Replace Anthropic API key patterns
+        # Pattern 1: {{ secret('ANTHROPIC_API_KEY') }} with quotes
+        flow_yaml = flow_yaml.replace(
+            '"{{ secret(\'ANTHROPIC_API_KEY\') }}"',
+            f'"{anthropic_key}"'
+        )
+
+        # Pattern 2: {{ secret('ANTHROPIC_API_KEY') }} without quotes
+        flow_yaml = flow_yaml.replace(
+            '{{ secret(\'ANTHROPIC_API_KEY\') }}',
+            f'"{anthropic_key}"'
+        )
+
+        # Pattern 3: Empty apiKey: ""
+        flow_yaml = flow_yaml.replace(
+            'apiKey: ""',
+            f'apiKey: "{anthropic_key}"'
+        )
+
+        # Replace Gov Data API key patterns
+        flow_yaml = flow_yaml.replace(
+            '"{{ secret(\'GOVDATA_API_KEY\') }}"',
+            f'"{govdata_key}"'
+        )
+        flow_yaml = flow_yaml.replace(
+            '{{ secret(\'GOVDATA_API_KEY\') }}',
+            f'"{govdata_key}"'
+        )
+
+        return flow_yaml
+
     def deploy_all_flows(self, flows_directory: str = "./kestra/flows") -> Dict[str, Any]:
         """
         Deploy all flows from a directory.
-        
+
         Args:
-            flows_directory: Path to directory containing .yml flow files
-            
+            flows_directory: Path to directory containing .yml and .yaml flow files
+
         Returns:
             Dictionary with deployment results
         """
         import glob
-        
+
         results = {}
-        flow_files = glob.glob(f"{flows_directory}/*.yml")
-        
+        # Support both .yml and .yaml extensions
+        flow_files = glob.glob(f"{flows_directory}/*.yml") + glob.glob(f"{flows_directory}/*.yaml")
+
         for flow_file in flow_files:
             flow_name = os.path.basename(flow_file)
             try:
@@ -170,9 +202,72 @@ class AgriLinkKestra:
                 results[flow_name] = {"success": True, **result}
             except Exception as e:
                 results[flow_name] = {"success": False, "error": str(e)}
-        
+
         return results
-    
+
+    def _create_execution_via_api(
+        self,
+        flow_id: str,
+        inputs: Dict[str, Any],
+        wait: bool = False
+    ) -> ExecutionResult:
+        """
+        Create execution by calling Kestra HTTP API directly.
+
+        Sends inputs as multipart/form-data as per Kestra API spec.
+
+        Args:
+            flow_id: Flow identifier
+            inputs: Dictionary of input parameters
+            wait: Whether to wait for execution completion
+
+        Returns:
+            ExecutionResult with execution details
+        """
+        # Build URL: /api/v1/{tenant}/executions/{namespace}/{flowId}
+        url = f"{self.host}/api/v1/{self.tenant}/executions/{self.NAMESPACE}/{flow_id}"
+
+        # Add wait parameter if needed
+        params = {}
+        if wait:
+            params['wait'] = 'true'
+
+        # Prepare inputs as multipart/form-data
+        # Each input becomes a form field
+        files = {}
+        for key, value in inputs.items():
+            # Convert value to string for form data
+            files[key] = (None, str(value))
+
+        # Get credentials for basic auth
+        username = os.getenv("KESTRA_USERNAME", "admin@kestra.io")
+        password = os.getenv("KESTRA_PASSWORD", "admin")
+
+        # Make POST request
+        response = requests.post(
+            url,
+            files=files,
+            params=params,
+            auth=(username, password) if username and password else None,
+            timeout=30
+        )
+
+        # Check response
+        if not response.ok:
+            error_msg = f"Kestra API error: {response.status_code} - {response.text}"
+            raise Exception(error_msg)
+
+        # Parse response
+        data = response.json()
+
+        return ExecutionResult(
+            execution_id=data.get('id', ''),
+            state=data.get('state', {}).get('current', 'CREATED'),
+            namespace=data.get('namespace', self.NAMESPACE),
+            flow_id=data.get('flowId', flow_id),
+            outputs=data.get('outputs')
+        )
+
     def start_sale(
         self,
         farmer_id: str,
@@ -221,20 +316,12 @@ class AgriLinkKestra:
             "crop_image_url": crop_image_url,
             "cost_of_production": cost_of_production,
         }
-        
-        execution = self.client.executions.create_execution(
-            id=self.FLOW_MAIN_SALE,
-            namespace=self.NAMESPACE,
-            tenant=self.tenant,
-            inputs=inputs
-        )
-        
-        return ExecutionResult(
-            execution_id=execution.id,
-            state=execution.state.current if hasattr(execution, 'state') else "CREATED",
-            namespace=self.NAMESPACE,
+
+        # Use direct API call with multipart/form-data for inputs
+        return self._create_execution_via_api(
             flow_id=self.FLOW_MAIN_SALE,
-            outputs=execution.outputs if hasattr(execution, 'outputs') else None
+            inputs=inputs,
+            wait=wait
         )
     
     def start_crisis_shield(
@@ -273,20 +360,12 @@ class AgriLinkKestra:
             "district": district,
             "quality_grade": quality_grade,
         }
-        
-        execution = self.client.executions.create_execution(
-            id=self.FLOW_CRISIS_SHIELD,
-            namespace=self.NAMESPACE,
-            tenant=self.tenant,
-            inputs=inputs
-        )
-        
-        return ExecutionResult(
-            execution_id=execution.id,
-            state=execution.state.current if hasattr(execution, 'state') else "CREATED",
-            namespace=self.NAMESPACE,
+
+        # Use direct API call with multipart/form-data for inputs
+        return self._create_execution_via_api(
             flow_id=self.FLOW_CRISIS_SHIELD,
-            outputs=execution.outputs if hasattr(execution, 'outputs') else None
+            inputs=inputs,
+            wait=wait
         )
     
     def start_market_monitor(
@@ -310,20 +389,12 @@ class AgriLinkKestra:
             "commodities": commodities,
             "state": state,
         }
-        
-        execution = self.client.executions.create_execution(
-            id=self.FLOW_MARKET_MONITOR,
-            namespace=self.NAMESPACE,
-            tenant=self.tenant,
-            inputs=inputs
-        )
-        
-        return ExecutionResult(
-            execution_id=execution.id,
-            state=execution.state.current if hasattr(execution, 'state') else "CREATED",
-            namespace=self.NAMESPACE,
+
+        # Use direct API call with multipart/form-data for inputs
+        return self._create_execution_via_api(
             flow_id=self.FLOW_MARKET_MONITOR,
-            outputs=execution.outputs if hasattr(execution, 'outputs') else None
+            inputs=inputs,
+            wait=wait
         )
     
     def get_execution_status(self, execution_id: str) -> ExecutionResult:

@@ -1,4 +1,3 @@
-// app/sell/page.tsx
 "use client";
 
 import { useState, useRef } from "react";
@@ -84,6 +83,7 @@ export default function SellPage() {
           quantityKg: formData.quantity,
           state: formData.state,
           district: formData.district || "Demo District",
+          cropImageUrl: formData.cropImagePreview || "",
           costOfProduction: COST_OF_PRODUCTION[formData.commodity] || 10,
         }),
       });

@@ -1,4 +1,3 @@
-// lib/utils.ts
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -6,9 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * Format currency in Indian Rupees
- */
 export function formatINR(amount: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -18,9 +14,6 @@ export function formatINR(amount: number): string {
   }).format(amount);
 }
 
-/**
- * Format weight in kg or quintals
- */
 export function formatWeight(kg: number): string {
   if (kg >= 100) {
     const quintals = kg / 100;
@@ -29,16 +22,10 @@ export function formatWeight(kg: number): string {
   return `${kg} kg`;
 }
 
-/**
- * Calculate total value
- */
 export function calculateTotal(quantityKg: number, pricePerQuintal: number): number {
   return (quantityKg / 100) * pricePerQuintal;
 }
 
-/**
- * Get status color classes
- */
 export function getStatusColor(status: "NORMAL" | "WARNING" | "CRISIS"): {
   bg: string;
   text: string;
@@ -71,9 +58,6 @@ export function getStatusColor(status: "NORMAL" | "WARNING" | "CRISIS"): {
   }
 }
 
-/**
- * Translations (simple i18n)
- */
 export const translations = {
   en: {
     appName: "Agri-Link",
@@ -128,9 +112,7 @@ export const translations = {
 export type Language = keyof typeof translations;
 export type TranslationKey = keyof typeof translations.en;
 
-/**
- * Get translation
- */
+
 export function t(key: string, lang: Language = "en"): string {
   const keys = key.split(".");
   let value: unknown = translations[lang];
@@ -146,16 +128,10 @@ export function t(key: string, lang: Language = "en"): string {
   return typeof value === "string" ? value : key;
 }
 
-/**
- * Generate unique ID
- */
 export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
-/**
- * Delay utility for animations
- */
 export function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }

@@ -1,13 +1,3 @@
-# =============================================================================
-# AGRI-LINK MAIN SALE WORKFLOW
-# =============================================================================
-# This is the primary orchestration workflow that:
-# 1. Assesses crop quality using AI Vision
-# 2. Fetches REAL market data from data.gov.in API
-# 3. Market Intelligence AI decides: NEGOTIATE or CRISIS_SHIELD
-# 4. Routes to appropriate sub-workflow with REAL buyer/processor data
-# =============================================================================
-
 id: main-sale-workflow
 namespace: agrilink
 
@@ -63,7 +53,7 @@ inputs:
 
 variables:
   # API endpoints
-  api_base_url: "{{ kv('AGRILINK_API_BASE_URL') | default('http://localhost:3000/api') }}"
+  api_base_url: "http://host.docker.internal:3000/api"
 
   # Calculated values
   cost_per_kg: "{{ inputs.cost_of_production / 100 }}"
@@ -74,11 +64,6 @@ tasks:
   # =========================================================================
   - id: assess_quality
     type: io.kestra.plugin.ai.agent.AIAgent
-    description: "AI Agent assesses crop quality from photo/description"
-    provider:
-      type: io.kestra.plugin.ai.provider.Anthropic
-      apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
-      modelName: claude-3-5-sonnet-20240620
     systemMessage: |
       You are an expert agricultural quality assessor for Indian crops.
       Assess the crop quality and provide a JSON response.
@@ -107,6 +92,30 @@ tasks:
       - Image URL: {{ inputs.crop_image_url }}
 
       If no image URL provided, assess based on typical quality for this commodity in this region.
+
+  # =========================================================================
+  # TASK 1.5: Clean Quality Assessment JSON
+  # =========================================================================
+  - id: clean_quality_json
+    type: io.kestra.plugin.scripts.python.Script
+    description: "Extract clean JSON from AI response (removes markdown fences)"
+    outputFiles:
+      - quality.json
+    script: |
+      import json
+      import re
+      
+      raw_output = """{{ outputs.assess_quality.textOutput }}"""
+      
+      # Remove markdown code fences if present
+      cleaned = re.sub(r'^```json\s*|\s*```$', '', raw_output.strip(), flags=re.MULTILINE)
+      
+      # Parse and validate
+      data = json.loads(cleaned)
+      
+      # Write to output file
+      with open('quality.json', 'w') as f:
+          json.dump(data, f)
 
   # =========================================================================
   # TASK 2: Fetch REAL Market Data from data.gov.in
@@ -160,7 +169,7 @@ tasks:
       === CROP DETAILS ===
       Commodity: {{ inputs.commodity }}
       Quantity: {{ inputs.quantity_kg }} kg
-      Quality Assessment: {{ outputs.assess_quality.text }}
+      Quality Assessment: {{ read(outputs.clean_quality_json.outputFiles['quality.json']) }}
       Location: {{ inputs.district }}, {{ inputs.state }}
 
       === COST ANALYSIS ===
@@ -176,11 +185,39 @@ tasks:
       4. Recommend a minimum acceptable price per kg
 
   # =========================================================================
+  # TASK 3.5: Clean Market Intelligence JSON
+  # =========================================================================
+  - id: clean_intelligence_json
+    type: io.kestra.plugin.scripts.python.Script
+    description: "Extract clean JSON from AI response (removes markdown fences)"
+    outputFiles:
+      - intelligence.json
+    script: |
+      import json
+      import re
+      
+      raw_output = """{{ outputs.market_intelligence.textOutput }}"""
+      
+      # Remove markdown code fences if present
+      cleaned = re.sub(r'^```json\s*|\s*```$', '', raw_output.strip(), flags=re.MULTILINE)
+      
+      # Parse and validate
+      data = json.loads(cleaned)
+      
+      # Ensure decision is valid
+      if data.get('decision') not in ['NEGOTIATE', 'CRISIS_SHIELD']:
+        data['decision'] = 'NEGOTIATE'  # Safe fallback
+      
+      # Write to output file
+      with open('intelligence.json', 'w') as f:
+          json.dump(data, f)
+
+  # =========================================================================
   # TASK 4: Decision Router - Branch based on AI decision
   # =========================================================================
   - id: decision_router
     type: io.kestra.plugin.core.flow.Switch
-    value: "{{ outputs.market_intelligence.text | json | jq('.decision') | first | default('NEGOTIATE') }}"
+    value: "{{ read(outputs.clean_intelligence_json.outputFiles['intelligence.json']) | jq('.decision') | first }}"
     cases:
       # ----- CRISIS PATH -----
       CRISIS_SHIELD:
@@ -188,12 +225,15 @@ tasks:
           type: io.kestra.plugin.core.log.Log
           message: |
             🚨 CRISIS SHIELD ACTIVATED for {{ inputs.farmer_name }}
-            Decision: {{ outputs.market_intelligence.text }}
+            Decision: {{ read(outputs.clean_intelligence_json.outputFiles['intelligence.json']) }}
 
         - id: fetch_processors
           type: io.kestra.plugin.core.http.Request
-          uri: ""
+          uri: "{{ vars.api_base_url }}/webhook"
           method: GET
+          params:
+              action: "processors"
+              commodity: "{{ inputs.commodity }}"
 
         - id: run_crisis_shield
           type: io.kestra.plugin.core.flow.Subflow
@@ -204,7 +244,7 @@ tasks:
             farmer_name: "{{ inputs.farmer_name }}"
             commodity: "{{ inputs.commodity }}"
             quantity_kg: "{{ inputs.quantity_kg }}"
-            quality_assessment: "{{ outputs.assess_quality.text }}"
+            quality_assessment: "{{ read(outputs.clean_quality_json.outputFiles['quality.json']) }}"
             state: "{{ inputs.state }}"
             district: "{{ inputs.district }}"
             cost_per_kg: "{{ vars.cost_per_kg }}"
@@ -218,7 +258,7 @@ tasks:
         type: io.kestra.plugin.core.log.Log
         message: |
           💼 Starting negotiation for {{ inputs.farmer_name }}
-          Decision: {{ outputs.market_intelligence.text }}
+          Decision: {{ read(outputs.clean_intelligence_json.outputFiles['intelligence.json']) }}
 
       - id: fetch_buyers
         type: io.kestra.plugin.core.http.Request
@@ -237,8 +277,8 @@ tasks:
           farmer_id: "{{ inputs.farmer_id }}"
           commodity: "{{ inputs.commodity }}"
           quantity_kg: "{{ inputs.quantity_kg }}"
-          quality_assessment: "{{ outputs.assess_quality.text }}"
-          min_price: "{{ outputs.market_intelligence.text | json | jq('.recommended_min_price') | first | default(10) }}"
+          quality_assessment: "{{ read(outputs.clean_quality_json.outputFiles['quality.json']) }}"
+          min_price: "{{ read(outputs.clean_intelligence_json.outputFiles['intelligence.json']) | jq('.recommended_min_price') | first }}"
           market_data: "{{ outputs.fetch_market_data.body }}"
           buyers_data: "{{ outputs.fetch_buyers.body }}"
         wait: true
@@ -264,19 +304,43 @@ tasks:
       Sale Details:
       - Commodity: {{ inputs.commodity }}
       - Quantity: {{ inputs.quantity_kg }} kg
-      - Quality Assessment: {{ outputs.assess_quality.text }}
+      - Quality Assessment: {{ read(outputs.clean_quality_json.outputFiles['quality.json']) }}
 
       Market Intelligence Decision:
-      {{ outputs.market_intelligence.text }}
+      {{ read(outputs.clean_intelligence_json.outputFiles['intelligence.json']) }}
 
       Create an encouraging summary explaining what will happen next.
+
+  # =========================================================================
+  # TASK 5.5: Clean Summary JSON
+  # =========================================================================
+  - id: clean_summary_json
+    type: io.kestra.plugin.scripts.python.Script
+    description: "Extract clean JSON from AI response"
+    outputFiles:
+      - summary.json
+    script: |
+      import json
+      import re
+      
+      raw_output = """{{ outputs.generate_summary.textOutput }}"""
+      
+      # Remove markdown code fences if present
+      cleaned = re.sub(r'^```json\s*|\s*```$', '', raw_output.strip(), flags=re.MULTILINE)
+      
+      # Parse and validate
+      data = json.loads(cleaned)
+      
+      # Write to output file
+      with open('summary.json', 'w') as f:
+          json.dump(data, f)
 
 pluginDefaults:
   - type: io.kestra.plugin.ai.agent.AIAgent
     values:
       provider:
         type: io.kestra.plugin.ai.provider.Anthropic
-        apiKey: ""
+        apiKey: "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"
         modelName: "claude-sonnet-4-5-20250929"
 
 # =============================================================================
@@ -285,20 +349,20 @@ pluginDefaults:
 outputs:
   - id: quality_assessment
     type: JSON
-    value: "{{ outputs.assess_quality.text }}"
+    value: "{{ read(outputs.clean_quality_json.outputFiles['quality.json']) }}"
     description: "AI quality assessment result"
 
   - id: market_intelligence
     type: JSON
-    value: "{{ outputs.market_intelligence.text }}"
+    value: "{{ read(outputs.clean_intelligence_json.outputFiles['intelligence.json']) }}"
     description: "Market analysis and AI decision"
 
   - id: final_summary
     type: JSON
-    value: "{{ outputs.generate_summary.text }}"
+    value: "{{ read(outputs.clean_summary_json.outputFiles['summary.json']) }}"
     description: "Final bilingual summary for farmer"
 
   - id: execution_path
     type: STRING
-    value: "{{ outputs.market_intelligence.text | json | jq('.decision') | first | default('NEGOTIATE') }}"
+    value: "{{ read(outputs.clean_intelligence_json.outputFiles['intelligence.json']) | jq('.decision') | first }}"
     description: "Which path was taken: NEGOTIATE or CRISIS_SHIELD"

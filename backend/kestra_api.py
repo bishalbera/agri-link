@@ -92,13 +92,33 @@ kestra_client: Optional[AgriLinkKestra] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize Kestra client on startup"""
+    """Initialize Kestra client on startup and deploy flows"""
     global kestra_client
     try:
         kestra_client = AgriLinkKestra()
         print(f"✅ Connected to Kestra at {kestra_client.host}")
+
+        # Deploy all flows on startup
+        flows_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kestra", "flows")
+        if os.path.exists(flows_dir):
+            print(f"📦 Deploying flows from {flows_dir}...")
+            try:
+                results = kestra_client.deploy_all_flows(flows_dir)
+                for flow_name, result in results.items():
+                    if result.get("success"):
+                        status_icon = "✅"
+                        status_msg = result.get("status", "deployed")
+                    else:
+                        status_icon = "⚠️"
+                        status_msg = f"error: {result.get('error', 'unknown')}"
+                    print(f"  {status_icon} {flow_name}: {status_msg}")
+            except Exception as e:
+                print(f"⚠️ Flow deployment failed: {e}")
+                print("  Note: Flows can still be deployed manually via /api/deploy endpoint")
+        else:
+            print(f"⚠️ Flows directory not found: {flows_dir}")
     except Exception as e:
-        print(f"Failed to initialize Kestra client: {e}")
+        print(f"❌ Failed to initialize Kestra client: {e}")
         kestra_client = None
     yield
     kestra_client = None

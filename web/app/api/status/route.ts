@@ -1,4 +1,3 @@
-// app/api/status/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutionStatus, formatExecutionStatus } from "@/lib/kestraClient";
 
@@ -15,7 +14,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Handle demo execution IDs
   if (executionId.startsWith("demo_")) {
     // Simulate progress based on time elapsed
     const timestamp = parseInt(executionId.replace("demo_", ""));
