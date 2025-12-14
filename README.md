@@ -246,11 +246,11 @@ Output:
 
 | Component | Technology |
 |-----------|------------|
-| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
+| Frontend | Next.js  TypeScript, Tailwind CSS |
 | Backend | FastAPI, Python 3.13 |
 | Orchestration | Kestra (Open Source) |
 | AI Provider | Anthropic Claude Sonnet 4.5 |
-| Database | PostgreSQL 16 |
+| Database | PostgreSQL |
 | Data Source | data.gov.in (Government API) |
 
 ## 🔧 Key Features
