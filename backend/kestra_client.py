@@ -309,6 +309,11 @@ class AgriLinkKestra:
             "cost_of_production": cost_of_production,
         }
 
+        # DEBUG: Log what we're sending to Kestra
+        print(f"[DEBUG] Sending to Kestra:")
+        print(f"  cost_of_production: {cost_of_production} (type: {type(cost_of_production)})")
+        print(f"  quantity_kg: {quantity_kg} (type: {type(quantity_kg)})")
+
         return self._create_execution_via_api(
             flow_id=self.FLOW_MAIN_SALE,
             inputs=inputs,

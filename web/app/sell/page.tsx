@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { KNOWN_STATES, KNOWN_COMMODITIES, COST_OF_PRODUCTION } from "@/lib/dataGovApi";
 
 type Step = "upload" | "details" | "analyzing" | "result";
@@ -27,8 +27,9 @@ interface MarketResult {
 
 export default function SellPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [step, setStep] = useState<Step>("upload");
   const [formData, setFormData] = useState<FormData>({
     cropImage: null,
@@ -43,6 +44,14 @@ export default function SellPage() {
   const [marketResult, setMarketResult] = useState<MarketResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [executionId, setExecutionId] = useState<string | null>(null);
+  const [isCrisisDemo, setIsCrisisDemo] = useState(false);
+
+  // Check for crisis demo mode
+  useEffect(() => {
+    if (searchParams.get('demo') === 'crisis') {
+      setIsCrisisDemo(true);
+    }
+  }, [searchParams]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -62,8 +71,13 @@ export default function SellPage() {
 
     try {
       // First, check market conditions
+      // For crisis demo, use inflated cost to show crisis status in preview
+      // Inflate by 15x to ensure market price is below 80% threshold
+      const baseCostForMarket = COST_OF_PRODUCTION[formData.commodity] || 10;
+      const costForMarket = isCrisisDemo ? baseCostForMarket * 15 : baseCostForMarket;
+
       const marketRes = await fetch(
-        `/api/market?commodity=${encodeURIComponent(formData.commodity)}&state=${encodeURIComponent(formData.state)}&cost=${COST_OF_PRODUCTION[formData.commodity] || 10}`
+        `/api/market?commodity=${encodeURIComponent(formData.commodity)}&state=${encodeURIComponent(formData.state)}&cost=${costForMarket}`
       );
       const marketData = await marketRes.json();
       
@@ -72,6 +86,14 @@ export default function SellPage() {
       }
 
       // Then trigger the Kestra workflow
+      // For crisis demo, inflate cost significantly
+      // baseCost is ₹/kg (e.g., 8), workflow expects ₹/quintal and divides by 100
+      // Normal: 8 * 100 = 800 ₹/quintal → 800/100 = 8 ₹/kg
+      // Crisis: 8 * 1500 = 12000 ₹/quintal → 12000/100 = 120 ₹/kg (MUCH higher than market!)
+      //   Market ~42 ₹/kg < threshold (120 * 0.8 = 96) → CRISIS TRIGGERED!
+      const baseCost = COST_OF_PRODUCTION[formData.commodity] || 10;
+      const costOfProduction = isCrisisDemo ? baseCost * 1500 : baseCost * 100;
+
       const sellRes = await fetch("/api/sell", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,7 +106,7 @@ export default function SellPage() {
           state: formData.state,
           district: formData.district || "Demo District",
           cropImageUrl: formData.cropImagePreview || "",
-          costOfProduction: COST_OF_PRODUCTION[formData.commodity] || 10,
+          costOfProduction,
         }),
       });
 
@@ -124,6 +146,20 @@ export default function SellPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6">
+        {/* Crisis Demo Banner */}
+        {isCrisisDemo && (
+          <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 text-center">
+            <div className="flex items-center justify-center gap-2 text-red-700 font-semibold mb-1">
+              <span>🚨</span>
+              <span>Crisis Shield Demo Mode</span>
+              <span>🚨</span>
+            </div>
+            <p className="text-sm text-red-600">
+              Simulating market crash scenario - AI will activate Crisis Shield
+            </p>
+          </div>
+        )}
+
         {/* Progress Indicator */}
         <div className="flex items-center justify-between mb-8">
           {["Upload", "Details", "Analyze", "Result"].map((label, i) => {

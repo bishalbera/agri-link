@@ -189,27 +189,27 @@ export default function Home() {
                 <p className="text-green-100 text-sm mt-1">See how Agri-Link works</p>
               </div>
               <div className="p-8">
-                <div className="grid md:grid-cols-2 gap-8">
+                <div className="max-w-md mx-auto">
                   <div className="space-y-4">
-                    <div className="bg-green-50 rounded-xl p-4">
-                      <div className="text-sm text-green-600 font-medium mb-1">Scenario 1: Normal Market</div>
-                      <div className="text-2xl font-bold text-green-800">₹21/kg</div>
-                      <div className="text-gray-600 text-sm">AI negotiated 17% above market</div>
+                    <div className="bg-red-50 rounded-xl p-6 crisis-border">
+                      <div className="text-sm text-red-600 font-medium mb-2">Crisis Shield Activated</div>
+                      <div className="text-3xl font-bold text-red-800 mb-2">₹6.5/kg</div>
+                      <div className="text-gray-600 text-sm mb-4">Diverted to food processor, saved 30% loss</div>
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <span className="status-dot crisis"></span>
+                        Market Status: Crisis Detected
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <span className="status-dot normal"></span>
-                      Market Status: Healthy
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="bg-red-50 rounded-xl p-4 crisis-border">
-                      <div className="text-sm text-red-600 font-medium mb-1">Scenario 2: Crisis Shield</div>
-                      <div className="text-2xl font-bold text-red-800">₹6.5/kg</div>
-                      <div className="text-gray-600 text-sm">Diverted to processor, saved 30% loss</div>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <span className="status-dot crisis"></span>
-                      Market Status: Crisis Detected
+                    <div className="text-center">
+                      <p className="text-sm text-gray-500 mb-4">
+                        When market prices crash below cost, AI automatically finds alternative buyers
+                      </p>
+                      <Link
+                        href="/sell?demo=crisis"
+                        className="inline-block bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition"
+                      >
+                        Try Crisis Shield Demo
+                      </Link>
                     </div>
                   </div>
                 </div>

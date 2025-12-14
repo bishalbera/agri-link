@@ -27,9 +27,9 @@ inputs:
     defaults: "Tomato"
 
   - id: quantity_kg
-    type: INT
+    type: STRING
     description: Quantity in kilograms
-    defaults: 100
+    defaults: "100"
 
   - id: state
     type: STRING
@@ -47,16 +47,17 @@ inputs:
     defaults: ""
 
   - id: cost_of_production
-    type: INT
+    type: STRING
     description: Cost of production in rupees per quintal (100kg)
-    defaults: 800
+    defaults: "800"
 
 variables:
   # API endpoints
   api_base_url: "http://host.docker.internal:3000/api"
 
-  # Calculated values
-  cost_per_kg: "{{ inputs.cost_of_production / 100 }}"
+  # Calculated values (parse string to number, then divide)
+  # Note: Removing quotes so it evaluates as a number, not a string
+  cost_per_kg: "{{ inputs.cost_of_production }}"
 
 tasks:
   # =========================================================================
@@ -142,22 +143,37 @@ tasks:
       You are an AI Market Intelligence Agent for Agri-Link.
       Your job is to ANALYZE market data and make AUTONOMOUS DECISIONS to protect farmers.
 
-      DECISION CRITERIA:
-      1. CRISIS_SHIELD - Activate when:
-         - Current price < 80% of cost of production
+      CRITICAL: You MUST use ONLY the cost of production value provided in the prompt below.
+      IGNORE any general knowledge about typical costs - use ONLY the specific farmer's cost data.
+      The cost is provided per quintal (100kg) - YOU MUST DIVIDE BY 100 to get cost per kg.
+
+      DECISION CRITERIA (apply these STRICTLY):
+      1. CRISIS_SHIELD - Activate when ANY of these is true:
+         - Current market price (per kg) < 80% of the cost per kg (cost per quintal / 100)
          - Price dropped > 30% in last 7 days
-         - Market shows signs of crash/glut
+         - Severe market crash detected
 
       2. NEGOTIATE - Normal sale when:
-         - Price is healthy (above cost)
+         - Current market price >= 80% of cost AND price drop < 30%
          - Market is stable
-         - Good opportunity for premium pricing
+         - Good opportunity for profitable sale
+
+      CALCULATION EXAMPLE:
+      If you see "Cost of Production per quintal: ₹12000" and market price = ₹42/kg:
+      Step 1: Convert to per kg: 12000 / 100 = ₹120/kg
+      Step 2: Calculate threshold: 120 * 0.8 = ₹96/kg
+      Step 3: Compare: 42 < 96? YES → CRISIS_SHIELD
+
+      If you see "Cost of Production per quintal: ₹800" and market price = ₹42/kg:
+      Step 1: Convert to per kg: 800 / 100 = ₹8/kg
+      Step 2: Calculate threshold: 8 * 0.8 = ₹6.4/kg
+      Step 3: Compare: 42 < 6.4? NO → NEGOTIATE
 
       You MUST respond with ONLY valid JSON, no markdown, no code blocks:
       {
         "market_summary": "2-3 sentence summary of market conditions",
         "decision": "NEGOTIATE" or "CRISIS_SHIELD",
-        "decision_reason": "why this decision",
+        "decision_reason": "why this decision (include the math: price vs 80% of cost)",
         "recommended_min_price": 15.5,
         "confidence": 0.85
       }
@@ -173,7 +189,8 @@ tasks:
       Location: {{ inputs.district }}, {{ inputs.state }}
 
       === COST ANALYSIS ===
-      Cost of Production: ₹{{ vars.cost_per_kg }}/kg
+      Cost of Production per quintal (100kg): ₹{{ vars.cost_per_kg }}
+      Cost of Production per kg: ₹{{ vars.cost_per_kg }} / 100 = Calculate this yourself
 
       === MARKET DATA (from data.gov.in) ===
       {{ outputs.fetch_market_data.body }}

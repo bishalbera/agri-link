@@ -18,7 +18,9 @@ inputs:
     type: STRING
 
   - id: quantity_kg
-    type: INT
+    type: STRING
+    defaults: "100"
+    description: "Quantity in kilograms"
 
   - id: quality_assessment
     type: STRING
@@ -32,8 +34,9 @@ inputs:
     type: STRING
 
   - id: cost_per_kg
-    type: FLOAT
+    type: STRING
     description: "Farmer's cost of production per kg"
+    defaults: "10"
 
   - id: market_data
     type: STRING
@@ -52,8 +55,11 @@ variables:
   # Parse market price from market data
   market_price: "{{ inputs.market_data | jq('.currentPrice') | first | default(0) }}"
 
+  # Parse cost to float for calculations
+  cost_per_kg_float: "{{ inputs.cost_per_kg | float }}"
+
   # Calculate potential losses
-  market_loss: "{{ (inputs.cost_per_kg - (inputs.market_data | jq('.currentPrice') | first | default(0))) * inputs.quantity_kg }}"
+  market_loss: "{{ (inputs.cost_per_kg | float - (inputs.market_data | jq('.currentPrice') | first | default(0))) * (inputs.quantity_kg | float) }}"
 
   # Parse outlets data for AI
   outlets_list: |
@@ -161,7 +167,7 @@ tasks:
       Quality: Grade {{ vars.quality_grade }}
 
       === FINANCIAL CRISIS ===
-      Cost of Production: ₹{{ inputs.cost_per_kg }}/kg
+      Cost of Production: ₹{{ vars.cost_per_kg_float }}/kg
       Current Market Price: ₹{{ vars.market_price }}/kg (CRASHED!)
       If sold at market: LOSS of ₹{{ vars.market_loss }}
 
@@ -173,6 +179,39 @@ tasks:
       2. Calculate potential loss at each outlet
       3. Select the BEST option to MINIMIZE loss
       4. Provide clear recommendation
+
+  # =========================================================================
+  # TASK 2.5: Clean Crisis Router JSON
+  # =========================================================================
+  - id: clean_crisis_router_json
+    type: io.kestra.plugin.scripts.python.Script
+    description: "Extract clean JSON from crisis router AI response"
+    outputFiles:
+      - crisis_router.json
+    script: |
+      import json
+      import re
+      
+      raw_output = """{{ outputs.crisis_router.textOutput }}"""
+      
+      # Remove markdown code fences if present
+      cleaned = re.sub(r'^```json\s*|\s*```$', '', raw_output.strip(), flags=re.MULTILINE)
+      
+      # Parse and validate
+      data = json.loads(cleaned)
+      
+      # Validate required fields
+      if 'selected_outlet' not in data or 'type' not in data['selected_outlet']:
+          raise ValueError("Invalid crisis router response: missing selected_outlet or type")
+      
+      # Ensure type is valid
+      valid_types = ['processor', 'msp', 'cold_storage', 'ngo']
+      if data['selected_outlet']['type'] not in valid_types:
+          data['selected_outlet']['type'] = 'processor'  # Safe fallback
+      
+      # Write to output file
+      with open('crisis_router.json', 'w') as f:
+          json.dump(data, f)
 
   # =========================================================================
   # TASK 3: Generate Urgent Notification
@@ -198,9 +237,33 @@ tasks:
       - We found alternative outlet
 
       SOLUTION FOUND:
-      {{ outputs.crisis_router.textOutput }}
+      {{ read(outputs.clean_crisis_router_json.outputFiles['crisis_router.json']) }}
 
       Make it reassuring - we SAVED them from bigger loss!
+
+  # =========================================================================
+  # TASK 3.5: Clean Notification JSON
+  # =========================================================================
+  - id: clean_notification_json
+    type: io.kestra.plugin.scripts.python.Script
+    description: "Extract clean JSON from notification AI response"
+    outputFiles:
+      - notification.json
+    script: |
+      import json
+      import re
+      
+      raw_output = """{{ outputs.generate_notification.textOutput }}"""
+      
+      # Remove markdown code fences if present
+      cleaned = re.sub(r'^```json\s*|\s*```$', '', raw_output.strip(), flags=re.MULTILINE)
+      
+      # Parse and validate
+      data = json.loads(cleaned)
+      
+      # Write to output file
+      with open('notification.json', 'w') as f:
+          json.dump(data, f)
 
   # =========================================================================
   # TASK 4: Log Final Result
@@ -210,9 +273,9 @@ tasks:
     message: |
       ✅ CRISIS SHIELD COMPLETE
       ══════════════════════════════════════
-      Selected Outlet: {{ outputs.crisis_router.textOutput | jq('.selected_outlet.name') | first }}
-      Type: {{ outputs.crisis_router.textOutput | jq('.selected_outlet.type') | first }}
-      Savings vs Market Sale: ₹{{ outputs.crisis_router.textOutput | jq('.financial_analysis.savings_vs_market') | first }}
+      Selected Outlet: {{ read(outputs.clean_crisis_router_json.outputFiles['crisis_router.json']) | jq('.selected_outlet.name') | first }}
+      Type: {{ read(outputs.clean_crisis_router_json.outputFiles['crisis_router.json']) | jq('.selected_outlet.type') | first }}
+      Savings vs Market Sale: ₹{{ read(outputs.clean_crisis_router_json.outputFiles['crisis_router.json']) | jq('.financial_analysis.savings_vs_market') | first }}
       ══════════════════════════════════════
 
 # =============================================================================
@@ -221,21 +284,21 @@ tasks:
 outputs:
   - id: crisis_resolution
     type: JSON
-    value: "{{ outputs.crisis_router.textOutput }}"
+    value: "{{ read(outputs.clean_crisis_router_json.outputFiles['crisis_router.json']) }}"
     description: "Complete crisis resolution with outlet selection and financial analysis"
 
   - id: notifications
     type: JSON
-    value: "{{ outputs.generate_notification.textOutput }}"
+    value: "{{ read(outputs.clean_notification_json.outputFiles['notification.json']) }}"
     description: "Bilingual notifications for farmer"
 
   - id: selected_outlet_name
     type: STRING
-    value: "{{ outputs.crisis_router.textOutput | jq('.selected_outlet.name') | first }}"
+    value: "{{ read(outputs.clean_crisis_router_json.outputFiles['crisis_router.json']) | jq('.selected_outlet.name') | first }}"
 
   - id: savings_amount
     type: STRING
-    value: "{{ outputs.crisis_router.textOutput | jq('.financial_analysis.savings_vs_market') | first }}"
+    value: "{{ read(outputs.clean_crisis_router_json.outputFiles['crisis_router.json']) | jq('.financial_analysis.savings_vs_market') | first }}"
 
 pluginDefaults:
   - type: io.kestra.plugin.ai.agent.AIAgent

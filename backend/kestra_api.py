@@ -143,7 +143,7 @@ if FASTAPI_AVAILABLE:
     async def start_sale(request: SaleRequest):
         """
         Start a new sale workflow.
-        
+
         This triggers the main-sale-workflow which:
         1. Assesses crop quality using AI
         2. Fetches market data from data.gov.in
@@ -152,7 +152,12 @@ if FASTAPI_AVAILABLE:
         """
         if not kestra_client:
             raise HTTPException(status_code=503, detail="Kestra client not initialized")
-        
+
+        # DEBUG: Log what we're receiving
+        print(f"[DEBUG] /api/sale received:")
+        print(f"  farmer_id: {request.farmer_id}")
+        print(f"  cost_of_production: {request.cost_of_production} (type: {type(request.cost_of_production)})")
+
         try:
             result = kestra_client.start_sale(
                 farmer_id=request.farmer_id,

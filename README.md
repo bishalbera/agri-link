@@ -39,9 +39,6 @@ Agri-Link is a **Digital Cooperative** powered by Kestra AI Agents that:
 **Our Implementation:**
 - ✅ Next.js 14 App Router with Server Components
 - ✅ Mobile-first responsive design (farmers use smartphones)
-- ✅ Edge functions for API routes (minimal latency)
-- ✅ Real-time status updates via Server-Sent Events
-- ✅ PWA support for offline access
 - ✅ Hindi/English bilingual interface
 
 ## 🏗️ Architecture
@@ -53,8 +50,8 @@ Agri-Link is a **Digital Cooperative** powered by Kestra AI Agents that:
 │  │ Landing  │  │ Dashboard│  │   Sell   │  │  Status Tracker  │ │
 │  │  Page    │  │  /farmer │  │   Flow   │  │   (Real-time)    │ │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘ │
-│                              │                                   │
-│                    API Routes (Edge)                             │
+│                              │                                   │      
+│                           API Routes                             │
 └──────────────────────────────┼───────────────────────────────────┘
                                │
                                ▼
