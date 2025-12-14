@@ -388,3 +388,8 @@ outputs:
     type: JSON
     value: "{{ outputs.run_negotiation.outputs.best_offer | default('{}') }}"
     description: "Best negotiation offer from negotiation-swarm (if NEGOTIATE path was taken)"
+
+  - id: crisis_resolution
+    type: JSON
+    value: "{{ outputs.run_crisis_shield.outputs.crisis_resolution | default('{}') }}"
+    description: "Crisis shield resolution with outlet details (if CRISIS_SHIELD path was taken)"

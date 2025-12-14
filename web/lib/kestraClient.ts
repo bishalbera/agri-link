@@ -197,14 +197,51 @@ export function formatExecutionStatus(status: ExecutionStatus): {
   phase: "analyzing" | "negotiating" | "arranging" | "complete" | "failed";
   progress: number;
   message: string;
+  isCrisis?: boolean;
   details?: {
     buyerName?: string;
     pricePerKg?: number;
     totalAmount?: number;
     pickupDate?: string;
     grade?: string;
+    // Crisis shield specific fields
+    outletName?: string;
+    outletType?: string;
+    outletLocation?: string;
+    savings?: number;
+    lossReduction?: number;
   };
 } {
+  // Helper to extract crisis shield details from Kestra outputs
+  const extractCrisisDetails = (outputs: any) => {
+    try {
+      const qualityGrade = outputs?.quality_assessment?.grade || "B";
+
+      // Check for crisis resolution output from crisis-shield flow
+      if (outputs?.crisis_resolution) {
+        const crisis = outputs.crisis_resolution;
+        const selectedOutlet = crisis.selected_outlet;
+        const financialAnalysis = crisis.financial_analysis;
+
+        return {
+          outletName: selectedOutlet?.name || "Emergency Outlet",
+          outletType: selectedOutlet?.type || "processor",
+          outletLocation: selectedOutlet?.location || "Location TBD",
+          pricePerKg: financialAnalysis?.outlet_price_per_kg || 0,
+          totalAmount: financialAnalysis?.outlet_total || 0,
+          savings: financialAnalysis?.savings_vs_market || 0,
+          lossReduction: financialAnalysis?.loss_reduction_percent || 0,
+          grade: qualityGrade,
+        };
+      }
+
+      return undefined;
+    } catch (err) {
+      console.error("Error extracting crisis details:", err);
+      return undefined;
+    }
+  };
+
   // Helper to extract buyer details from Kestra outputs
   const extractBuyerDetails = (outputs: any) => {
     try {
@@ -245,16 +282,42 @@ export function formatExecutionStatus(status: ExecutionStatus): {
     }
   };
 
+  // Check if this is a crisis shield execution
+  const isCrisisPath = status.outputs?.execution_path === "CRISIS_SHIELD" ||
+                       status.outputs?.crisis_resolution !== undefined;
+
   switch (status.state) {
     case "CREATED":
     case "RUNNING":
-      // Determine phase based on outputs
+      // Crisis Shield Path
+      if (isCrisisPath) {
+        if (status.outputs?.crisis_resolution) {
+          return {
+            phase: "arranging",
+            progress: 75,
+            message: "Emergency outlet found! Arranging diversion...",
+            isCrisis: true,
+            details: extractCrisisDetails(status.outputs),
+          };
+        }
+        if (status.outputs?.market_intelligence) {
+          return {
+            phase: "negotiating",
+            progress: 50,
+            message: "Crisis detected! Finding emergency outlets...",
+            isCrisis: true,
+          };
+        }
+      }
+
+      // Normal Negotiation Path
       if (status.outputs?.quality_assessment) {
         if (status.outputs?.best_offer) {
           return {
             phase: "arranging",
             progress: 75,
             message: "Finalizing deal and arranging pickup...",
+            isCrisis: false,
             details: extractBuyerDetails(status.outputs),
           };
         }
@@ -262,7 +325,8 @@ export function formatExecutionStatus(status: ExecutionStatus): {
           return {
             phase: "negotiating",
             progress: 50,
-            message: "AI agents negotiating with 5 buyers...",
+            message: "AI agents negotiating with buyers...",
+            isCrisis: false,
             details: extractBuyerDetails(status.outputs),
           };
         }
@@ -271,13 +335,24 @@ export function formatExecutionStatus(status: ExecutionStatus): {
         phase: "analyzing",
         progress: 25,
         message: "Analyzing crop quality and market conditions...",
+        isCrisis: false,
       };
 
     case "SUCCESS":
+      if (isCrisisPath) {
+        return {
+          phase: "complete",
+          progress: 100,
+          message: "Crisis averted! Produce diverted successfully!",
+          isCrisis: true,
+          details: extractCrisisDetails(status.outputs),
+        };
+      }
       return {
         phase: "complete",
         progress: 100,
         message: "Sale completed successfully!",
+        isCrisis: false,
         details: extractBuyerDetails(status.outputs),
       };
 

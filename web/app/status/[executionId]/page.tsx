@@ -9,12 +9,19 @@ interface StatusData {
   phase: "analyzing" | "negotiating" | "arranging" | "complete" | "failed";
   progress: number;
   message: string;
+  isCrisis?: boolean;
   details?: {
     buyerName?: string;
     pricePerKg?: number;
     totalAmount?: number;
     pickupDate?: string;
     grade?: string;
+    // Crisis shield specific fields
+    outletName?: string;
+    outletType?: string;
+    outletLocation?: string;
+    savings?: number;
+    lossReduction?: number;
   };
 }
 
@@ -152,46 +159,113 @@ export default function StatusPage() {
 
             {/* Completion Card */}
             {status.phase === "complete" && status.details && (
-              <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 animate-slide-up">
+              <div className={`border-2 rounded-2xl p-6 animate-slide-up ${
+                status.isCrisis
+                  ? "bg-orange-50 border-orange-200"
+                  : "bg-green-50 border-green-200"
+              }`}>
                 <div className="text-center mb-6">
-                  <span className="text-5xl mb-4 block">🎉</span>
-                  <h2 className="text-2xl font-bold text-green-800">Sale Complete!</h2>
-                  <p className="text-green-600">Your crop has been sold successfully</p>
+                  <span className="text-5xl mb-4 block">{status.isCrisis ? "🛡️" : "🎉"}</span>
+                  <h2 className={`text-2xl font-bold ${
+                    status.isCrisis ? "text-orange-800" : "text-green-800"
+                  }`}>
+                    {status.isCrisis ? "Crisis Averted!" : "Sale Complete!"}
+                  </h2>
+                  <p className={status.isCrisis ? "text-orange-600" : "text-green-600"}>
+                    {status.isCrisis
+                      ? "Your crop has been diverted to emergency outlet"
+                      : "Your crop has been sold successfully"}
+                  </p>
                 </div>
 
                 <div className="bg-white rounded-xl p-4 space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Buyer</span>
-                    <span className="font-semibold text-gray-900">{status.details.buyerName}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Price</span>
-                    <span className="font-semibold text-gray-900">₹{status.details.pricePerKg}/kg</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Total Amount</span>
-                    <span className="font-bold text-green-600 text-lg">₹{status.details.totalAmount?.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Quality Grade</span>
-                    <span className="font-semibold text-gray-900">Grade {status.details.grade}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-600">Pickup Date</span>
-                    <span className="font-semibold text-gray-900">{status.details.pickupDate}</span>
-                  </div>
+                  {status.isCrisis ? (
+                    // Crisis Shield Results
+                    <>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Emergency Outlet</span>
+                        <span className="font-semibold text-gray-900">{status.details.outletName}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Outlet Type</span>
+                        <span className="font-semibold text-gray-900 capitalize">
+                          {status.details.outletType?.replace("_", " ")}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Location</span>
+                        <span className="font-semibold text-gray-900">{status.details.outletLocation}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Price</span>
+                        <span className="font-semibold text-gray-900">₹{status.details.pricePerKg}/kg</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Total Amount</span>
+                        <span className="font-bold text-orange-600 text-lg">₹{status.details.totalAmount?.toLocaleString()}</span>
+                      </div>
+                      {status.details.savings !== undefined && status.details.savings > 0 && (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <span className="text-gray-600">Loss Prevented</span>
+                          <span className="font-bold text-green-600">₹{status.details.savings?.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {status.details.lossReduction !== undefined && (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <span className="text-gray-600">Loss Reduction</span>
+                          <span className="font-bold text-green-600">{status.details.lossReduction}%</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-gray-600">Quality Grade</span>
+                        <span className="font-semibold text-gray-900">Grade {status.details.grade}</span>
+                      </div>
+                    </>
+                  ) : (
+                    // Normal Sale Results
+                    <>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Buyer</span>
+                        <span className="font-semibold text-gray-900">{status.details.buyerName}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Price</span>
+                        <span className="font-semibold text-gray-900">₹{status.details.pricePerKg}/kg</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Total Amount</span>
+                        <span className="font-bold text-green-600 text-lg">₹{status.details.totalAmount?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Quality Grade</span>
+                        <span className="font-semibold text-gray-900">Grade {status.details.grade}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-gray-600">Pickup Date</span>
+                        <span className="font-semibold text-gray-900">{status.details.pickupDate}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="mt-6 space-y-3">
                   <Link
                     href="/dashboard"
-                    className="block w-full text-center bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition"
+                    className={`block w-full text-center text-white py-3 rounded-xl font-semibold transition ${
+                      status.isCrisis
+                        ? "bg-orange-600 hover:bg-orange-700"
+                        : "bg-green-600 hover:bg-green-700"
+                    }`}
                   >
                     Go to Dashboard
                   </Link>
                   <Link
                     href="/sell"
-                    className="block w-full text-center text-green-600 py-3 hover:text-green-700"
+                    className={`block w-full text-center py-3 ${
+                      status.isCrisis
+                        ? "text-orange-600 hover:text-orange-700"
+                        : "text-green-600 hover:text-green-700"
+                    }`}
                   >
                     Sell Another Crop
                   </Link>
