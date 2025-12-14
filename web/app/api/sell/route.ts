@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
       costOfProduction,
     } = body;
 
-    // Validate required fields
     if (!commodity || !quantityKg || !state) {
       return NextResponse.json(
         { error: "Missing required fields: commodity, quantityKg, state" },

@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (executionId.startsWith("demo_")) {
-    // Simulate progress based on time elapsed
     const timestamp = parseInt(executionId.replace("demo_", ""));
     const elapsed = Date.now() - timestamp;
     
@@ -59,7 +58,6 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Real Kestra execution
   try {
     const status = await getExecutionStatus(executionId);
     const formatted = formatExecutionStatus(status);

@@ -95,11 +95,9 @@ class AgriLinkKestra:
         Returns:
             Flow metadata from Kestra
         """
-        # Inject API keys from environment into the flow YAML
         flow_yaml = self._inject_api_keys(flow_yaml)
 
         try:
-            # Try to create first
             result = self.client.flows.create_flow(
                 tenant=self.tenant,
                 body=flow_yaml
@@ -109,7 +107,6 @@ class AgriLinkKestra:
             error_str = str(e).lower()
             if "already exists" in error_str or "409" in error_str or "conflict" in error_str:
                 # Flow exists, update it
-                # Extract flow ID and namespace from YAML
                 import yaml
                 flow_dict = yaml.safe_load(flow_yaml)
                 result = self.client.flows.update_flow(
@@ -136,7 +133,6 @@ class AgriLinkKestra:
         Returns:
             Flow YAML with injected API keys
         """
-        # Get API keys from environment
         anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
         govdata_key = os.getenv("GOVDATA_API_KEY", "")
 
@@ -164,7 +160,6 @@ class AgriLinkKestra:
             f'apiKey: "{anthropic_key}"'
         )
 
-        # Replace Gov Data API key patterns
         flow_yaml = flow_yaml.replace(
             '"{{ secret(\'GOVDATA_API_KEY\') }}"',
             f'"{govdata_key}"'
@@ -189,7 +184,6 @@ class AgriLinkKestra:
         import glob
 
         results = {}
-        # Support both .yml and .yaml extensions
         flow_files = glob.glob(f"{flows_directory}/*.yml") + glob.glob(f"{flows_directory}/*.yaml")
 
         for flow_file in flow_files:
@@ -223,10 +217,8 @@ class AgriLinkKestra:
         Returns:
             ExecutionResult with execution details
         """
-        # Build URL: /api/v1/{tenant}/executions/{namespace}/{flowId}
         url = f"{self.host}/api/v1/{self.tenant}/executions/{self.NAMESPACE}/{flow_id}"
 
-        # Add wait parameter if needed
         params = {}
         if wait:
             params['wait'] = 'true'
@@ -308,12 +300,7 @@ class AgriLinkKestra:
             "crop_image_url": crop_image_url,
             "cost_of_production": cost_of_production,
         }
-
-        # DEBUG: Log what we're sending to Kestra
-        print(f"[DEBUG] Sending to Kestra:")
-        print(f"  cost_of_production: {cost_of_production} (type: {type(cost_of_production)})")
-        print(f"  quantity_kg: {quantity_kg} (type: {type(quantity_kg)})")
-
+ 
         return self._create_execution_via_api(
             flow_id=self.FLOW_MAIN_SALE,
             inputs=inputs,

@@ -17,6 +17,7 @@ except ImportError:
     print("FastAPI not installed. Run: pip install fastapi uvicorn")
 
 from kestra_client import AgriLinkKestra, ExecutionResult
+from database import db as kestra_db
 
 class SaleRequest(BaseModel):
     """Request model for starting a sale"""
@@ -244,12 +245,12 @@ if FASTAPI_AVAILABLE:
     async def deploy_flows(flows_directory: str = "./kestra/flows"):
         """
         Deploy all flows from a directory to Kestra.
-        
+
         This is typically done once during setup.
         """
         if not kestra_client:
             raise HTTPException(status_code=503, detail="Kestra client not initialized")
-        
+
         try:
             results = kestra_client.deploy_all_flows(flows_directory)
             return {
@@ -258,6 +259,31 @@ if FASTAPI_AVAILABLE:
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+
+    @app.get("/api/executions")
+    async def get_executions(
+        namespace: str = "agrilink",
+        limit: int = 50,
+        flow_id: Optional[str] = None
+    ):
+        """
+        Get list of executions from Kestra database.
+
+        This fetches real execution data from Postgres instead of mock data.
+        """
+        try:
+            executions = kestra_db.get_executions(
+                namespace=namespace,
+                limit=limit,
+                flow_id=flow_id
+            )
+            return {
+                "success": True,
+                "executions": executions
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch executions: {str(e)}")
 
 
 def main():

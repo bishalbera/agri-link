@@ -1,6 +1,6 @@
-# 🌾 Agri-Link: Crisis Shield for Farmers
+# 🌾 Agri-Link: AI-Powered Crisis Shield for Farmers
 
-> **AI Agents Assemble Hackathon 2025**
+> **Autonomous AI agents that prevent farmer debt traps by detecting market crashes and diverting produce to emergency outlets**
 
 ## 🎯 The Problem: The Harvest Paradox
 
@@ -27,11 +27,12 @@ Agri-Link is a **Digital Cooperative** powered by Kestra AI Agents that:
 > "Best project using Kestra's built-in AI Agent to summarize data from other systems. Bonus credit for enabling the agent to make decisions based on the summarized data."
 
 **Our Implementation:**
-- ✅ Kestra AI Agents fetch & summarize data from data.gov.in (Government Mandi prices)
-- ✅ Market Intelligence Agent analyzes price trends, volatility, and crash indicators
-- ✅ **Decision-Making**: Crisis detection algorithm triggers autonomous mode switching
-- ✅ Quality Assessment Agent grades crops from uploaded images
-- ✅ Negotiation Swarm makes real-time buyer selection decisions
+- ✅ **Market Intelligence Agent** fetches & summarizes data from data.gov.in (Government Mandi prices)
+- ✅ **Autonomous Decision-Making**: Crisis detection algorithm (price < 80% of cost OR 30% drop in 7 days)
+- ✅ **Quality Assessment Agent** grades crops and calculates price multipliers
+- ✅ **Crisis Router Agent** selects optimal emergency outlet (processors, MSP, cold storage)
+- ✅ **Negotiation Swarm** makes real-time buyer selection decisions
+- ✅ All decisions stored in PostgreSQL for analytics
 
 ### Stormbreaker Deployment Award ($2,000)
 > "Strongest Vercel deployment, showing a smooth, fast, and production-ready experience."
@@ -39,309 +40,413 @@ Agri-Link is a **Digital Cooperative** powered by Kestra AI Agents that:
 **Our Implementation:**
 - ✅ Next.js 14 App Router with Server Components
 - ✅ Mobile-first responsive design (farmers use smartphones)
+- ✅ Real-time status tracking with live updates
 - ✅ Hindi/English bilingual interface
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        VERCEL (Frontend)                         │
+│                    NEXT.JS FRONTEND (Vercel)                     │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │
 │  │ Landing  │  │ Dashboard│  │   Sell   │  │  Status Tracker  │ │
-│  │  Page    │  │  /farmer │  │   Flow   │  │   (Real-time)    │ │
+│  │  Page    │  │ (Real DB)│  │   Flow   │  │   (Real-time)    │ │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘ │
-│                              │                                   │      
-│                           API Routes                             │
 └──────────────────────────────┼───────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     KESTRA (AI Agent Orchestration)              │
+│                   FASTAPI BACKEND (Python)                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
+│  │  Kestra API  │  │ Postgres DB  │  │   Market Data API      │ │
+│  │    Client    │  │   Connector  │  │   (data.gov.in)        │ │
+│  └──────────────┘  └──────────────┘  └────────────────────────┘ │
+└──────────────────────────────┼───────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              KESTRA + POSTGRES (Docker Compose)                  │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │                    Main Sale Workflow                       │ │
+│  │              Main Sale Workflow (Claude AI)                 │ │
 │  │  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐ │ │
-│  │  │ Quality │───▶│ Market  │───▶│  Mode   │───▶│Logistics│ │ │
-│  │  │ Agent   │    │  Agent  │    │ Router  │    │  Agent  │ │ │
+│  │  │ Quality │───▶│ Market  │───▶│  Crisis │───▶│ Summary │ │ │
+│  │  │ Agent   │    │  Intel  │    │ Router  │    │ Agent   │ │ │
 │  │  └─────────┘    └─────────┘    └─────────┘    └─────────┘ │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                               │                                  │
 │              ┌────────────────┼────────────────┐                │
-│              ▼                ▼                ▼                │
-│  ┌──────────────────┐ ┌──────────────┐ ┌──────────────────────┐│
-│  │ Negotiation Swarm│ │Crisis Shield │ │  Summary Generator   ││
-│  │  (5 Parallel AI) │ │  (Diversion) │ │  (Hindi/English)     ││
-│  └──────────────────┘ └──────────────┘ └──────────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      EXTERNAL DATA SOURCES                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │ data.gov.in  │  │   Buyer      │  │  Food Processor        │ │
-│  │ (Mandi API)  │  │  Registry    │  │     Registry           │ │
-│  └──────────────┘  └──────────────┘  └────────────────────────┘ │
+│              ▼                                 ▼                │
+│  ┌──────────────────┐              ┌──────────────────────────┐ │
+│  │ Negotiation      │              │    Crisis Shield         │ │
+│  │ Swarm (5 AI)     │              │    (Emergency Diversion) │ │
+│  └──────────────────┘              └──────────────────────────┘ │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │             PostgreSQL Database                           │  │
+│  │  - Execution History  - Workflow States  - Outputs        │  │
+│  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+- Docker & Docker Compose
 - Node.js 18+
-- Python 3.10+ (for Kestra SDK)
-- Kestra instance (Cloud or Docker)
-- data.gov.in API key
-- Google Gemini API key
+- Python 3.10+
+- Anthropic API Key (Claude)
+- data.gov.in API key (optional - uses fallback data)
 
-### 1. Clone & Install
+### 1. Clone Repository
 
 ```bash
 git clone https://github.com/yourusername/agri-link.git
 cd agri-link
-
-# Install Node.js dependencies
-npm install
-
-# Install Python dependencies (for Kestra SDK)
-cd scripts
-pip install -r requirements.txt
-cd ..
 ```
 
-### 2. Environment Setup
+### 2. Start Kestra + PostgreSQL
 
 ```bash
-cp .env.example .env.local
+# Start Kestra and PostgreSQL with Docker Compose
+docker compose up -d
+
+# Verify services are running
+docker compose ps
+
+# Kestra UI: http://localhost:8080
+# PostgreSQL: localhost:5433
 ```
 
-Edit `.env.local`:
-```env
-# data.gov.in API
-DATA_GOV_API_KEY=your_key_here
+### 3. Setup Backend (FastAPI)
 
-# Kestra (choose auth method)
-KESTRA_API_URL=http://localhost:8080
-KESTRA_API_TOKEN=your_token  # OR use username/password below
+```bash
+cd backend
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file
+cat > .env << EOF
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+GOVDATA_API_KEY=your_govdata_api_key_here  # optional
+KESTRA_HOST=http://localhost:8080
 KESTRA_USERNAME=admin@kestra.io
 KESTRA_PASSWORD=admin
+KESTRA_TENANT=main
+EOF
 
-# Google Gemini (for Kestra AI Agents)
-GEMINI_API_KEY=your_gemini_key
+# Start FastAPI server (auto-deploys Kestra flows on startup)
+python kestra_api.py
 
-# App URL (for webhooks)
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# API available at: http://localhost:8000
+# API Docs: http://localhost:8000/docs
 ```
 
-### 3. Deploy Kestra Flows (using Python SDK)
+### 4. Setup Frontend (Next.js)
 
 ```bash
-# Deploy all flows to Kestra
-python scripts/deploy_flows.py
+cd web
 
-# Or deploy and run a demo
-python scripts/deploy_flows.py --demo --follow
-```
+# Install dependencies
+npm install
 
-### 4. Run Locally
+# Create .env.local
+cat > .env.local << EOF
+NEXT_PUBLIC_FASTAPI_URL=http://localhost:8000
+EOF
 
-```bash
+# Start development server
 npm run dev
+
+# App available at: http://localhost:3000
 ```
 
-### 5. Deploy to Vercel
+### 5. Test the Application
 
-```bash
-vercel deploy --prod
-```
+**Normal Sale Flow:**
+1. Visit: `http://localhost:3000/sell`
+2. Upload crop photo
+3. Fill in details (Tomato, 100kg, Kerala, Kollam)
+4. AI negotiates with buyers
+5. Track status in real-time
 
-## 🐍 Python SDK Usage
+**Crisis Shield Demo:**
+1. Visit: `http://localhost:3000/sell?demo=crisis`
+2. Fill in details
+3. AI detects "crisis" and activates emergency diversion
+4. See crisis shield results on status page
 
-The project includes a comprehensive Python client for Kestra operations:
-
-```python
-from scripts.kestra_client import AgriLinkKestra
-
-# Initialize client
-client = AgriLinkKestra()
-
-# Start a sale workflow
-result = client.start_sale(
-    farmer_id="farmer_123",
-    farmer_name="Ramesh Kumar",
-    commodity="Tomato",
-    quantity_kg=500,
-    state="Maharashtra",
-    district="Nashik"
-)
-
-print(f"Execution ID: {result.execution_id}")
-print(f"State: {result.state}")
-
-# Follow execution in real-time
-for event in client.follow_execution(result.execution_id):
-    print(f"State: {event.state}")
-    if not event.is_running():
-        break
-```
-
-### CLI Commands
-
-```bash
-# Deploy flows
-python scripts/kestra_client.py deploy
-
-# Start a sale
-python scripts/kestra_client.py sale --farmer-id farmer_123 --commodity Tomato --quantity 500
-
-# Check execution status
-python scripts/kestra_client.py status <execution_id>
-
-# Follow execution
-python scripts/kestra_client.py follow <execution_id>
-
-# Start market monitoring
-python scripts/kestra_client.py monitor --commodities "Tomato,Potato,Onion"
-```
-
-### Optional: Python API Server
-
-For more robust integration, you can run a separate Python API server:
-
-```bash
-# Install FastAPI
-pip install fastapi uvicorn
-
-# Run the server
-python scripts/kestra_api.py
-
-# API available at http://localhost:8000
-# Docs at http://localhost:8000/docs
-```
+**View Dashboard:**
+1. Visit: `http://localhost:3000/dashboard`
+2. See real execution history from PostgreSQL
+3. View crisis shield vs normal sales
 
 ## 📁 Project Structure
 
 ```
 agri-link/
-├── app/                          # Next.js App Router
-│   ├── page.tsx                  # Landing page
-│   ├── dashboard/
-│   │   └── page.tsx              # Farmer dashboard
-│   ├── sell/
-│   │   └── page.tsx              # New sale flow
-│   ├── status/
-│   │   └── [executionId]/
-│   │       └── page.tsx          # Real-time status
-│   └── api/
-│       ├── market/route.ts       # Market data proxy
-│       ├── sell/route.ts         # Trigger Kestra workflow
-│       ├── status/route.ts       # Execution status
-│       └── webhook/route.ts      # Kestra callbacks
-├── components/
-│   ├── ui/                       # Shadcn components
-│   ├── CropUpload.tsx
-│   ├── MarketStatus.tsx
-│   ├── NegotiationProgress.tsx
-│   ├── CrisisAlert.tsx
-│   └── LanguageToggle.tsx
-├── lib/
-│   ├── dataGovApi.ts             # data.gov.in wrapper
-│   ├── kestraClient.ts           # Kestra API client
-│   └── utils.ts
+├── backend/                      # FastAPI Backend
+│   ├── kestra_api.py             # Main FastAPI server
+│   ├── kestra_client.py          # Kestra SDK client
+│   ├── database.py               # PostgreSQL connector
+│   └── requirements.txt
+│
+├── web/                          # Next.js Frontend
+│   ├── app/
+│   │   ├── page.tsx              # Landing page
+│   │   ├── dashboard/
+│   │   │   └── page.tsx          # Farmer dashboard (real DB data)
+│   │   ├── sell/
+│   │   │   └── page.tsx          # New sale flow
+│   │   ├── status/[executionId]/
+│   │   │   └── page.tsx          # Real-time execution status
+│   │   └── api/
+│   │       ├── market/route.ts   # Market data proxy
+│   │       ├── sell/route.ts     # Trigger workflow
+│   │       ├── status/route.ts   # Execution status
+│   │       └── webhook/route.ts  # Buyer/processor registry
+│   └── lib/
+│       ├── dataGovApi.ts         # data.gov.in API client
+│       └── kestraClient.ts       # Frontend Kestra client
+│
 ├── kestra/
-│   └── flows/
-│       ├── main-sale-workflow.yml
-│       ├── market-intelligence.yml
-│       ├── negotiation-swarm.yml
-│       ├── crisis-shield.yml
-│       └── logistics.yml
-├── data/
-│   ├── buyers.json               # Simulated buyer registry
-│   ├── processors.json           # Food processor registry
-│   └── costs.json                # Cost of production data
-└── public/
-    ├── icons/
-    └── locales/
-        ├── en.json
-        └── hi.json
+│   └── flows/                    # Kestra Workflow Definitions
+│       ├── main-sale-workflow.yaml      # Main orchestration
+│       ├── negotiation-swarm.yaml       # 5 AI negotiators
+│       ├── crisis-shield.yml            # Emergency diversion
+│       └── market-monitor.yml           # Price monitoring
+│
+├── docker-compose.yml            # Kestra + PostgreSQL
+└── README.md
 ```
 
 ## 🎬 Demo Scenarios
 
 ### Scenario 1: Normal Market Sale
-1. Ramesh uploads photo of 500kg tomatoes
-2. Quality Agent grades: **Grade A** (1.2x price multiplier)
-3. Market Agent fetches data.gov.in: ₹1,800/quintal (healthy)
-4. Status: **NORMAL** → Negotiation Swarm activates
-5. 5 AI agents negotiate with different buyers
-6. Best offer: ₹2,100/quintal from FreshMart
-7. Logistics arranged, Ramesh earns **₹10,500**
+1. Farmer uploads photo of 100kg tomatoes
+2. **Quality Agent** grades: Grade A (freshness 8/10)
+3. **Market Agent** fetches data.gov.in: ₹42/kg (healthy market)
+4. Cost: ₹8/kg → Price is 5x cost → Status: **NORMAL**
+5. **Negotiation Swarm** activates with 5 parallel AI agents
+6. Best offer: ₹45/kg from Premium Buyer
+7. Total earned: **₹4,500**
 
-### Scenario 2: Crisis Mode Activation
-1. Market crashes to ₹400/quintal (cost was ₹800)
-2. Market Agent detects: **CRISIS** (price < 80% of cost)
-3. Crisis Shield activates automatically
-4. AI finds Kissan Foods processor accepting at ₹650/quintal
-5. Produce diverted, Ramesh loses 19% instead of 50%
-6. **Debt trap prevented**
+### Scenario 2: Crisis Shield Activation
+1. Farmer sets cost at ₹120/kg (using `?demo=crisis` mode)
+2. Market price: ₹42/kg
+3. **Market Agent** detects: ₹42 < ₹96 (80% of cost) → **CRISIS**
+4. **Crisis Shield** activates automatically
+5. **Crisis Router AI** evaluates:
+   - Processor: ₹50/kg (60% of market but guaranteed)
+   - MSP: ₹48/kg (government support)
+   - Cold Storage: ₹35/kg + storage fees
+6. AI selects: **Fresh2Go Processing Plant** at ₹50/kg
+7. Loss prevented: ₹800 (vs market sale)
+8. **Debt trap prevented** ✅
+
+## 🤖 AI Agent Workflows
+
+### 1. Quality Assessment Agent (Claude)
+```yaml
+Input: Crop image, commodity, location
+AI Task: Grade crop quality (A/B/C)
+Output:
+  - grade: "A"
+  - freshness_score: 8
+  - price_multiplier: 1.15
+  - defects: []
+```
+
+### 2. Market Intelligence Agent (Claude)
+```yaml
+Input: Market data from data.gov.in, cost of production
+AI Task: Analyze price trends and detect crisis
+Decision Logic:
+  - CRISIS: price < 80% of cost OR 30% drop in 7 days
+  - NEGOTIATE: Normal market conditions
+Output:
+  - decision: "CRISIS_SHIELD" or "NEGOTIATE"
+  - recommended_min_price: 50.0
+  - confidence: 0.85
+```
+
+### 3. Crisis Router Agent (Claude)
+```yaml
+Input: Available processors, MSP centers, cold storage
+AI Task: Select optimal emergency outlet
+Priority: Processors → MSP → Cold Storage → NGO
+Output:
+  - selected_outlet: "Fresh2Go Processing"
+  - outlet_type: "processor"
+  - price_per_kg: 50
+  - savings_vs_market: 800
+  - loss_reduction_percent: 65
+```
+
+### 4. Negotiation Swarm (5 Parallel Claude Agents)
+```yaml
+Agents:
+  1. Anchor High: Starts 30% above market
+  2. Volume Player: Bulk discount strategy
+  3. Urgency Creator: Time pressure tactics
+  4. Relationship Builder: Long-term partnership
+  5. Quality Premium: Emphasizes Grade A value
+
+Output:
+  - best_offer:
+      buyer_name: "Premium Buyer Co"
+      final_price_per_kg: 45
+      total_amount: 4500
+```
+
+## 🌐 API Endpoints
+
+### FastAPI Backend (`http://localhost:8000`)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check & Kestra connection status |
+| `/api/sale` | POST | Start main sale workflow |
+| `/api/crisis` | POST | Directly activate crisis shield |
+| `/api/monitor` | POST | Start market monitoring |
+| `/api/execution/{id}` | GET | Get execution status |
+| `/api/executions` | GET | List all executions from PostgreSQL |
+| `/api/deploy` | POST | Deploy Kestra flows |
+
+### Next.js Frontend (`http://localhost:3000`)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/market` | GET | Fetch market analysis |
+| `/api/sell` | POST | Trigger sale via FastAPI |
+| `/api/status` | GET | Execution status |
+| `/api/webhook` | GET | Buyer/processor registry |
 
 ## 🛠️ Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| Frontend | Next.js 14, React 18, Tailwind CSS |
-| Deployment | Vercel (Edge Functions) |
-| Orchestration | Kestra (AI Agents) |
-| AI Provider | Google Gemini 2.0 Flash |
+| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
+| Backend | FastAPI, Python 3.13 |
+| Orchestration | Kestra (Open Source) |
+| AI Provider | Anthropic Claude Sonnet 4.5 |
+| Database | PostgreSQL 16 |
 | Data Source | data.gov.in (Government API) |
-| Language | TypeScript |
+| Deployment | Docker Compose (local), Vercel (frontend) |
 
-## 📊 Kestra AI Agent Workflows
+## 🔧 Key Features
 
-### 1. Market Intelligence Agent
-- Fetches real-time Mandi prices from data.gov.in
-- Calculates 7-day and 30-day moving averages
-- Detects price crash patterns
-- **Decision Output**: NORMAL / WARNING / CRISIS
+### Real Database Integration ✅
+- Dashboard fetches real execution history from PostgreSQL
+- No dummy data - all transactions are actual Kestra executions
+- Crisis shield sales marked with 🛡️ badge
 
-### 2. Quality Assessment Agent
-- Analyzes crop photo using Gemini Vision
-- Grades: A (premium), B (standard), C (processing grade)
-- Calculates price multiplier (0.6x - 1.2x)
+### Crisis Detection Logic
+```python
+# Implemented in Market Intelligence Agent
+cost_per_kg = cost_per_quintal / 100
+threshold = cost_per_kg * 0.8
 
-### 3. Negotiation Swarm (5 Agents)
-- **Anchor High**: Starts 30% above market
-- **Volume Play**: Offers bulk discounts
-- **Urgency Creator**: Limited time pressure
-- **Relationship Builder**: Long-term partnership
-- **Quality Premium**: Emphasizes Grade A value
+if market_price < threshold:
+    decision = "CRISIS_SHIELD"
+elif price_drop_7d > 30%:
+    decision = "CRISIS_SHIELD"
+else:
+    decision = "NEGOTIATE"
+```
 
-### 4. Crisis Shield Router
-- Priority routing: Processors → MSP → Cold Storage → NGO
-- Calculates loss minimization paths
-- Executes autonomous diversion
-
-## 🌐 API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/market` | GET | Fetch market analysis |
-| `/api/sell` | POST | Start sale workflow |
-| `/api/status/[id]` | GET | Execution status |
-| `/api/webhook` | POST | Kestra callbacks |
+### Status Page Features
+- Real-time execution tracking
+- Different UI for crisis vs normal sales
+- Shows outlet details for crisis shield
+- Displays savings and loss reduction percentage
 
 ## 🔒 Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DATA_GOV_API_KEY` | Government data portal API key |
-| `KESTRA_API_URL` | Kestra instance URL |
-| `KESTRA_API_TOKEN` | Kestra authentication token |
-| `GEMINI_API_KEY` | Google AI API key |
-| `NEXT_PUBLIC_APP_URL` | Deployed app URL |
+### Backend (.env)
+```bash
+ANTHROPIC_API_KEY=xxx              # Required
+GOVDATA_API_KEY=xxx                       
+KESTRA_HOST=http://localhost:8080         # Kestra instance
+KESTRA_USERNAME=admin@kestra.io
+KESTRA_PASSWORD=admin
+KESTRA_TENANT=main
+```
+
+### Frontend (.env.local)
+```bash
+NEXT_PUBLIC_FASTAPI_URL=http://localhost:8000
+```
+
+## 🐳 Docker Commands
+
+```bash
+# Start services
+docker compose up -d
+
+# View logs
+docker compose logs -f kestra
+docker compose logs -f postgres
+
+# Stop services
+docker compose down
+
+# Reset database (clean slate)
+docker compose down -v
+docker compose up -d
+
+# Access Postgres directly
+docker exec -it agri-link-postgres-1 psql -U kestra -d kestra
+
+# Check executions in DB
+docker exec agri-link-postgres-1 psql -U kestra -d kestra -c \
+  "SELECT id, flow_id, state_current FROM executions WHERE namespace='agrilink' ORDER BY start_date DESC LIMIT 5;"
+```
+
+## 📊 PostgreSQL Database Schema
+
+The Kestra executions table stores all workflow data:
+
+```sql
+-- Main executions table (auto-created by Kestra)
+executions
+  - id (execution ID)
+  - namespace (agrilink)
+  - flow_id (main-sale-workflow, crisis-shield, etc)
+  - state_current (SUCCESS, FAILED, RUNNING)
+  - start_date, end_date
+  - value (JSONB with inputs/outputs)
+
+-- Our app queries this for dashboard data
+```
+
+## 🎯 Testing
+
+### Unit Tests
+```bash
+# Backend tests
+cd backend
+pytest
+
+# Frontend tests
+cd web
+npm test
+```
+
+### Demo Crisis Mode
+```bash
+# Access crisis demo
+open http://localhost:3000/sell?demo=crisis
+
+# This inflates cost_of_production by 1500x to trigger crisis
+# Normal: 8 * 100 = 800 (₹8/kg)
+# Crisis: 8 * 1500 = 12000 (₹120/kg) → Forces crisis shield
+```
 
 ## 👥 Team
 
-- **Your Name** - Full Stack Developer
+- **Biplab Bera** - Full Stack Developer
 
 ## 📄 License
 
@@ -349,7 +454,20 @@ MIT License - see [LICENSE](LICENSE)
 
 ## 🙏 Acknowledgments
 
-- [Kestra](https://kestra.io) for workflow orchestration
+- [Kestra](https://kestra.io) for AI workflow orchestration
+- [Anthropic](https://anthropic.com) for Claude AI
 - [Vercel](https://vercel.com) for deployment platform
 - [data.gov.in](https://data.gov.in) for open government data
 - Ministry of Agriculture, Government of India
+
+## 🔗 Links
+
+- **Live Demo**: [Coming Soon]
+- **Demo Video**: [Coming Soon]
+- **Kestra Flows**: `/kestra/flows`
+- **API Docs**: `http://localhost:8000/docs`
+- **Kestra UI**: `http://localhost:8080`
+
+---
+
+Built with ❤️ for Indian farmers using Kestra AI Agents

@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
 
-/**
- * Webhook endpoint for Kestra workflow callbacks
- * Kestra will call this endpoint to notify about execution progress
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -21,14 +17,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Webhook] Received callback for execution ${executionId}`);
     console.log(`[Webhook] Flow: ${flowId}, Task: ${taskId}, State: ${state}`);
 
-    // Here you could:
-    // 1. Store progress in a database
-    // 2. Send push notifications to the farmer
-    // 3. Update a real-time dashboard
-    // 4. Send SMS updates
-
-    // For hackathon demo, we just log and acknowledge
-    return NextResponse.json({
+        return NextResponse.json({
       success: true,
       received: {
         executionId,
@@ -48,16 +37,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * GET endpoint for market data (called by Kestra workflows)
- */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   
   const action = searchParams.get("action");
   
   if (action === "market") {
-    // Forward to market API
     const commodity = searchParams.get("commodity") || "Tomato";
     const state = searchParams.get("state") || "Maharashtra";
     const cost = searchParams.get("cost") || "10";
@@ -72,7 +57,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (action === "buyers") {
-    // Return buyer registry for Kestra negotiation workflow
     const commodity = searchParams.get("commodity") || "Tomato";
     
     const buyers = [
@@ -123,7 +107,6 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    // Filter by commodity preference
     const filteredBuyers = buyers.filter(b => 
       b.preferredCommodities.includes(commodity)
     );
@@ -132,7 +115,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (action === "processors") {
-    // Return food processor registry for crisis shield
     const processors = [
       {
         id: "processor_1",

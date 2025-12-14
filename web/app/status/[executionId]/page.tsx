@@ -48,10 +48,8 @@ export default function StatusPage() {
       }
     };
 
-    // Initial fetch
     pollStatus();
 
-    // Poll every 2 seconds until complete
     const interval = setInterval(() => {
       if (status?.phase !== "complete" && status?.phase !== "failed") {
         pollStatus();
@@ -75,7 +73,6 @@ export default function StatusPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
-      {/* Header */}
       <header className="bg-white border-b border-green-100 sticky top-0 z-50">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -106,7 +103,6 @@ export default function StatusPage() {
           </div>
         ) : (
           <>
-            {/* Progress Steps */}
             <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
               <h2 className="font-semibold text-gray-900 mb-6">Sale Progress</h2>
               
@@ -143,7 +139,6 @@ export default function StatusPage() {
                 })}
               </div>
 
-              {/* Progress Bar */}
               <div className="mt-6">
                 <div className="progress-bar">
                   <div 
@@ -157,7 +152,6 @@ export default function StatusPage() {
               </div>
             </div>
 
-            {/* Completion Card */}
             {status.phase === "complete" && status.details && (
               <div className={`border-2 rounded-2xl p-6 animate-slide-up ${
                 status.isCrisis

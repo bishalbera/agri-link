@@ -14,68 +14,66 @@ interface SaleRecord {
   buyer: string;
 }
 
-// Demo data for the dashboard
-const DEMO_SALES: SaleRecord[] = [
-  {
-    id: "1",
-    date: "2025-12-10",
-    commodity: "Tomato",
-    quantity: 500,
-    pricePerKg: 21,
-    totalAmount: 10500,
-    status: "completed",
-    buyer: "FreshMart Restaurant",
-  },
-  {
-    id: "2",
-    date: "2025-12-08",
-    commodity: "Potato",
-    quantity: 1000,
-    pricePerKg: 15,
-    totalAmount: 15000,
-    status: "completed",
-    buyer: "BigBasket Wholesale",
-  },
-  {
-    id: "3",
-    date: "2025-12-05",
-    commodity: "Tomato",
-    quantity: 300,
-    pricePerKg: 6.5,
-    totalAmount: 1950,
-    status: "crisis",
-    buyer: "Kissan Foods (Processor)",
-  },
-  {
-    id: "4",
-    date: "2025-12-03",
-    commodity: "Onion",
-    quantity: 800,
-    pricePerKg: 25,
-    totalAmount: 20000,
-    status: "completed",
-    buyer: "Metro Cash & Carry",
-  },
-];
-
-interface MarketPrice {
-  commodity: string;
-  currentPrice: number;
-  change: number;
-  status: "up" | "down" | "stable";
-}
-
-const DEMO_PRICES: MarketPrice[] = [
-  { commodity: "Tomato", currentPrice: 18, change: -5, status: "down" },
-  { commodity: "Potato", currentPrice: 15, change: 2, status: "up" },
-  { commodity: "Onion", currentPrice: 28, change: 0, status: "stable" },
-  { commodity: "Cabbage", currentPrice: 12, change: -3, status: "down" },
-];
-
 export default function DashboardPage() {
-  const [sales, setSales] = useState<SaleRecord[]>(DEMO_SALES);
-  const [prices, setPrices] = useState<MarketPrice[]>(DEMO_PRICES);
-  const [isLoading, setIsLoading] = useState(false);
+  const [sales, setSales] = useState<SaleRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchExecutions = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("http://localhost:8000/api/executions?limit=20&flow_id=main-sale-workflow");
+        const data = await response.json();
+
+        if (data.success && data.executions) {
+          const salesRecords: SaleRecord[] = data.executions
+            .filter((exec: any) => exec.state_current === "SUCCESS")
+            .map((exec: any) => {
+              const outputs = exec.outputs || {};
+              const inputs = exec.inputs ? JSON.parse(exec.inputs) : {};
+
+              const isCrisis = outputs.execution_path === "CRISIS_SHIELD";
+
+              let buyer = "Unknown";
+              let totalAmount = 0;
+              let pricePerKg = 0;
+
+              if (isCrisis && outputs.crisis_resolution) {
+                buyer = outputs.crisis_resolution.selected_outlet?.name || "Emergency Outlet";
+                totalAmount = outputs.crisis_resolution.financial_analysis?.outlet_total || 0;
+                pricePerKg = outputs.crisis_resolution.financial_analysis?.outlet_price_per_kg || 0;
+              } else if (outputs.best_offer && outputs.best_offer.winner) {
+                buyer = outputs.best_offer.winner.buyer_name || "Selected Buyer";
+                totalAmount = outputs.best_offer.winner.total_amount || 0;
+                pricePerKg = outputs.best_offer.winner.final_price_per_kg || 0;
+              }
+
+              return {
+                id: exec.id,
+                date: new Date(exec.start_date).toISOString().split("T")[0],
+                commodity: inputs.commodity || "Unknown",
+                quantity: parseInt(inputs.quantity_kg) || 0,
+                pricePerKg: pricePerKg,
+                totalAmount: totalAmount,
+                status: isCrisis ? "crisis" as const : "completed" as const,
+                buyer: buyer,
+              };
+            });
+
+          setSales(salesRecords);
+        } else {
+          setSales([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch executions:", error);
+        setSales([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchExecutions();
+  }, []);
 
   const totalEarnings = sales.reduce((sum, s) => sum + s.totalAmount, 0);
   const totalQuantity = sales.reduce((sum, s) => sum + s.quantity, 0);
@@ -83,7 +81,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -103,7 +100,6 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <StatCard
             icon="💰"
@@ -132,72 +128,31 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Live Prices */}
-          <div className="md:col-span-1">
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="text-lg">📊</span>
-                Live Mandi Prices
-              </h2>
-              <div className="space-y-3">
-                {prices.map((price) => (
-                  <div
-                    key={price.commodity}
-                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-                  >
-                    <span className="text-gray-700">{price.commodity}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">₹{price.currentPrice}/kg</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        price.status === "up" ? "bg-green-100 text-green-700" :
-                        price.status === "down" ? "bg-red-100 text-red-700" :
-                        "bg-gray-100 text-gray-600"
-                      }`}>
-                        {price.status === "up" ? "↑" : price.status === "down" ? "↓" : "−"}
-                        {Math.abs(price.change)}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-gray-400 mt-4">
-                Source: data.gov.in • Updated just now
-              </p>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-2xl shadow-sm p-6 mt-6">
-              <h2 className="font-semibold text-gray-900 mb-4">Quick Actions</h2>
-              <div className="space-y-2">
-                <Link
-                  href="/sell"
-                  className="flex items-center gap-3 p-3 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 transition"
-                >
-                  <span>🌿</span>
-                  <span>Sell New Crop</span>
-                </Link>
-                <button className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 text-gray-700 hover:bg-gray-100 transition w-full">
-                  <span>📈</span>
-                  <span>Price Alerts</span>
-                </button>
-                <button className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 text-gray-700 hover:bg-gray-100 transition w-full">
-                  <span>📋</span>
-                  <span>Download Reports</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Sales */}
-          <div className="md:col-span-2">
+        <div>
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <span className="text-lg">📋</span>
                 Recent Sales
               </h2>
-              
-              <div className="space-y-4">
+
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading sales history...</p>
+                </div>
+              ) : sales.length === 0 ? (
+                <div className="text-center py-12">
+                  <span className="text-5xl mb-4 block">📋</span>
+                  <p className="text-gray-600 mb-4">No sales yet</p>
+                  <Link
+                    href="/sell"
+                    className="inline-block bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition"
+                  >
+                    Start Your First Sale
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
                 {sales.map((sale) => (
                   <div
                     key={sale.id}
@@ -231,16 +186,17 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
 
-              <button className="w-full mt-4 text-center text-green-600 hover:text-green-700 text-sm font-medium">
-                View All Transactions →
-              </button>
+              {!isLoading && sales.length > 0 && (
+                <button className="w-full mt-4 text-center text-green-600 hover:text-green-700 text-sm font-medium">
+                  View All Transactions →
+                </button>
+              )}
             </div>
-          </div>
         </div>
 
-        {/* AI Insights */}
         <div className="mt-8 bg-gradient-to-r from-green-600 to-green-700 rounded-2xl p-6 text-white">
           <div className="flex items-start gap-4">
             <div className="text-3xl">🤖</div>

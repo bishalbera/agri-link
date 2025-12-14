@@ -119,7 +119,6 @@ export default function SellPage() {
       setStep("result");
     } catch (error) {
       console.error("Error:", error);
-      // Show demo result on error
       setMarketResult({
         status: "NORMAL",
         currentPricePerKg: 18,
@@ -146,7 +145,6 @@ export default function SellPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6">
-        {/* Crisis Demo Banner */}
         {isCrisisDemo && (
           <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 text-center">
             <div className="flex items-center justify-center gap-2 text-red-700 font-semibold mb-1">
@@ -160,7 +158,6 @@ export default function SellPage() {
           </div>
         )}
 
-        {/* Progress Indicator */}
         <div className="flex items-center justify-between mb-8">
           {["Upload", "Details", "Analyze", "Result"].map((label, i) => {
             const stepIndex = ["upload", "details", "analyzing", "result"].indexOf(step);
@@ -184,7 +181,6 @@ export default function SellPage() {
           })}
         </div>
 
-        {/* Step: Upload */}
         {step === "upload" && (
           <div className="animate-slide-up">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Upload Crop Photo</h1>
@@ -216,12 +212,10 @@ export default function SellPage() {
           </div>
         )}
 
-        {/* Step: Details */}
         {step === "details" && (
           <div className="animate-slide-up">
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Crop Details</h1>
             
-            {/* Image Preview */}
             {formData.cropImagePreview && (
               <div className="mb-6 relative">
                 <img
@@ -242,7 +236,6 @@ export default function SellPage() {
             )}
 
             <div className="space-y-4">
-              {/* Commodity */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Crop Type
@@ -250,7 +243,7 @@ export default function SellPage() {
                 <select
                   value={formData.commodity}
                   onChange={(e) => setFormData(prev => ({ ...prev, commodity: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none text-gray-900 bg-white"
                 >
                   {KNOWN_COMMODITIES.slice(0, 15).map(c => (
                     <option key={c} value={c}>{c}</option>
@@ -258,7 +251,6 @@ export default function SellPage() {
                 </select>
               </div>
 
-              {/* Quantity */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Quantity (kg)
@@ -267,13 +259,12 @@ export default function SellPage() {
                   type="number"
                   value={formData.quantity}
                   onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none text-gray-900 bg-white"
                   min={1}
                   max={10000}
                 />
               </div>
 
-              {/* State */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   State
@@ -281,7 +272,7 @@ export default function SellPage() {
                 <select
                   value={formData.state}
                   onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none text-gray-900 bg-white"
                 >
                   {KNOWN_STATES.map(s => (
                     <option key={s} value={s}>{s}</option>
@@ -289,7 +280,6 @@ export default function SellPage() {
                 </select>
               </div>
 
-              {/* District */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   District
@@ -299,11 +289,10 @@ export default function SellPage() {
                   value={formData.district}
                   onChange={(e) => setFormData(prev => ({ ...prev, district: e.target.value }))}
                   placeholder="e.g., Nashik"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none text-gray-900 bg-white placeholder:text-gray-400"
                 />
               </div>
 
-              {/* Farmer Name (optional) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Your Name (optional)
@@ -313,7 +302,7 @@ export default function SellPage() {
                   value={formData.farmerName}
                   onChange={(e) => setFormData(prev => ({ ...prev, farmerName: e.target.value }))}
                   placeholder="e.g., Ramesh Kumar"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none text-gray-900 bg-white placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -327,7 +316,6 @@ export default function SellPage() {
           </div>
         )}
 
-        {/* Step: Analyzing */}
         {step === "analyzing" && (
           <div className="animate-slide-up text-center py-12">
             <div className="w-20 h-20 mx-auto mb-6 relative">
@@ -348,10 +336,8 @@ export default function SellPage() {
           </div>
         )}
 
-        {/* Step: Result */}
         {step === "result" && marketResult && (
           <div className="animate-slide-up">
-            {/* Status Banner */}
             <div className={`
               rounded-2xl p-6 mb-6
               ${marketResult.status === "CRISIS" ? "bg-red-50 border-2 border-red-200 crisis-border" : ""}
@@ -375,7 +361,6 @@ export default function SellPage() {
               </div>
             </div>
 
-            {/* Price Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
               <div className="text-center mb-4">
                 <div className="text-sm text-gray-500 mb-1">Current Market Price</div>
@@ -398,7 +383,6 @@ export default function SellPage() {
               </div>
             </div>
 
-            {/* Action Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
               <h3 className="font-semibold text-gray-900 mb-3">Recommended Action</h3>
               <p className="text-gray-600 mb-4">
@@ -419,7 +403,6 @@ export default function SellPage() {
               )}
             </div>
 
-            {/* Start Over */}
             <button
               onClick={() => {
                 setStep("upload");

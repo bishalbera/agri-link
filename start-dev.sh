@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Agri-Link Development Startup Script
-# Starts both FastAPI backend and Next.js frontend
 
 set -e
 

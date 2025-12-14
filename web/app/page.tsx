@@ -109,7 +109,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero Section */}
       <main className="pt-20">
         <section className="max-w-6xl mx-auto px-4 py-16 md:py-24">
           <div className="text-center max-w-3xl mx-auto">
@@ -133,7 +132,6 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Feature Cards */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">
             {t.features.map((feature, i) => (
               <div
@@ -153,7 +151,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* How It Works */}
         <section className="bg-white py-16">
           <div className="max-w-6xl mx-auto px-4">
             <h2 className={`text-3xl font-bold text-center text-gray-900 mb-12 ${lang === "hi" ? "hindi-text" : ""}`}>
@@ -180,7 +177,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Demo Section */}
         <section className="py-16 bg-gradient-to-b from-green-50 to-white">
           <div className="max-w-4xl mx-auto px-4">
             <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
@@ -218,7 +214,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Footer */}
         <footer className="bg-gray-900 text-gray-400 py-12">
           <div className="max-w-6xl mx-auto px-4 text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
