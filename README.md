@@ -93,58 +93,16 @@ git clone https://github.com/yourusername/agri-link.git
 cd agri-link
 ```
 
-### 2. Start Kestra + PostgreSQL
+### 2. Make the `start-dev` file executable
 
 ```bash
-# Start Kestra and PostgreSQL with Docker Compose
-docker compose up -d
-
-# Verify services are running
-docker compose ps
-
-# Kestra UI: http://localhost:8080
-# PostgreSQL: localhost:5433
+chmod +x start-dev.sh
 ```
 
-### 3. Setup Backend (FastAPI)
+### 3. Run the script
 
 ```bash
-cd backend
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Create .env file
-cat > .env << EOF
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-GOVDATA_API_KEY=your_govdata_api_key_here  # optional
-KESTRA_HOST=http://localhost:8080
-KESTRA_USERNAME=yourusername
-KESTRA_PASSWORD=your_pass
-KESTRA_TENANT=main
-EOF
-
-# API available at: http://localhost:8000
-# API Docs: http://localhost:8000/docs
-```
-
-### 4. Setup Frontend (Next.js)
-
-```bash
-cd web
-
-# Install dependencies
-npm install
-
-# Create .env.local
-cat > .env.local << EOF
-NEXT_PUBLIC_FASTAPI_URL=http://localhost:8000
-EOF
-
-# Start development server
-npm run dev
-
-# App available at: http://localhost:3000
+./start-dev.sh
 ```
 
 ### 5. Test the Application
