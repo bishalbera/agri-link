@@ -133,9 +133,6 @@ tasks:
 
   # =========================================================================
   # TASK 3: Market Intelligence Agent (DECISION MAKER)
-  # ⭐ THIS IS THE KEY TASK FOR WAKANDA DATA AWARD
-  # - Summarizes data from external system (data.gov.in)
-  # - Makes AUTONOMOUS decision based on analysis
   # =========================================================================
   - id: market_intelligence
     type: io.kestra.plugin.ai.agent.AIAgent
