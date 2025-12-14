@@ -21,10 +21,6 @@ Agri-Link is a **Digital Cooperative** powered by Kestra AI Agents that:
 3. **🛡️ Crisis Shield** - Automatically diverts produce to food processors when prices crash
 4. **🤝 Negotiation Swarm** - 5 AI agents simultaneously negotiate with buyers using different strategies
 
-## 🏆 Prize Track Alignment
-
-### Wakanda Data Award ($4,000)
-> "Best project using Kestra's built-in AI Agent to summarize data from other systems. Bonus credit for enabling the agent to make decisions based on the summarized data."
 
 **Our Implementation:**
 - ✅ **Market Intelligence Agent** fetches & summarizes data from data.gov.in (Government Mandi prices)
@@ -34,20 +30,12 @@ Agri-Link is a **Digital Cooperative** powered by Kestra AI Agents that:
 - ✅ **Negotiation Swarm** makes real-time buyer selection decisions
 - ✅ All decisions stored in PostgreSQL for analytics
 
-### Stormbreaker Deployment Award ($2,000)
-> "Strongest Vercel deployment, showing a smooth, fast, and production-ready experience."
-
-**Our Implementation:**
-- ✅ Next.js 14 App Router with Server Components
-- ✅ Mobile-first responsive design (farmers use smartphones)
-- ✅ Real-time status tracking with live updates
-- ✅ Hindi/English bilingual interface
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    NEXT.JS FRONTEND (Vercel)                     │
+│                    NEXT.JS FRONTEND                             │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │
 │  │ Landing  │  │ Dashboard│  │   Sell   │  │  Status Tracker  │ │
 │  │  Page    │  │ (Real DB)│  │   Flow   │  │   (Real-time)    │ │
@@ -96,7 +84,7 @@ Agri-Link is a **Digital Cooperative** powered by Kestra AI Agents that:
 - Node.js 18+
 - Python 3.10+
 - Anthropic API Key (Claude)
-- data.gov.in API key (optional - uses fallback data)
+- data.gov.in API key 
 
 ### 1. Clone Repository
 
@@ -131,13 +119,10 @@ cat > .env << EOF
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 GOVDATA_API_KEY=your_govdata_api_key_here  # optional
 KESTRA_HOST=http://localhost:8080
-KESTRA_USERNAME=admin@kestra.io
-KESTRA_PASSWORD=admin
+KESTRA_USERNAME=yourusername
+KESTRA_PASSWORD=your_pass
 KESTRA_TENANT=main
 EOF
-
-# Start FastAPI server (auto-deploys Kestra flows on startup)
-python kestra_api.py
 
 # API available at: http://localhost:8000
 # API Docs: http://localhost:8000/docs
@@ -221,29 +206,6 @@ agri-link/
 └── README.md
 ```
 
-## 🎬 Demo Scenarios
-
-### Scenario 1: Normal Market Sale
-1. Farmer uploads photo of 100kg tomatoes
-2. **Quality Agent** grades: Grade A (freshness 8/10)
-3. **Market Agent** fetches data.gov.in: ₹42/kg (healthy market)
-4. Cost: ₹8/kg → Price is 5x cost → Status: **NORMAL**
-5. **Negotiation Swarm** activates with 5 parallel AI agents
-6. Best offer: ₹45/kg from Premium Buyer
-7. Total earned: **₹4,500**
-
-### Scenario 2: Crisis Shield Activation
-1. Farmer sets cost at ₹120/kg (using `?demo=crisis` mode)
-2. Market price: ₹42/kg
-3. **Market Agent** detects: ₹42 < ₹96 (80% of cost) → **CRISIS**
-4. **Crisis Shield** activates automatically
-5. **Crisis Router AI** evaluates:
-   - Processor: ₹50/kg (60% of market but guaranteed)
-   - MSP: ₹48/kg (government support)
-   - Cold Storage: ₹35/kg + storage fees
-6. AI selects: **Fresh2Go Processing Plant** at ₹50/kg
-7. Loss prevented: ₹800 (vs market sale)
-8. **Debt trap prevented** ✅
 
 ## 🤖 AI Agent Workflows
 
@@ -312,7 +274,6 @@ Output:
 | `/api/monitor` | POST | Start market monitoring |
 | `/api/execution/{id}` | GET | Get execution status |
 | `/api/executions` | GET | List all executions from PostgreSQL |
-| `/api/deploy` | POST | Deploy Kestra flows |
 
 ### Next.js Frontend (`http://localhost:3000`)
 
@@ -333,7 +294,6 @@ Output:
 | AI Provider | Anthropic Claude Sonnet 4.5 |
 | Database | PostgreSQL 16 |
 | Data Source | data.gov.in (Government API) |
-| Deployment | Docker Compose (local), Vercel (frontend) |
 
 ## 🔧 Key Features
 
@@ -421,52 +381,10 @@ executions
 -- Our app queries this for dashboard data
 ```
 
-## 🎯 Testing
-
-### Unit Tests
-```bash
-# Backend tests
-cd backend
-pytest
-
-# Frontend tests
-cd web
-npm test
-```
-
-### Demo Crisis Mode
-```bash
-# Access crisis demo
-open http://localhost:3000/sell?demo=crisis
-
-# This inflates cost_of_production by 1500x to trigger crisis
-# Normal: 8 * 100 = 800 (₹8/kg)
-# Crisis: 8 * 1500 = 12000 (₹120/kg) → Forces crisis shield
-```
-
-## 👥 Team
-
-- **Biplab Bera** - Full Stack Developer
 
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE)
-
-## 🙏 Acknowledgments
-
-- [Kestra](https://kestra.io) for AI workflow orchestration
-- [Anthropic](https://anthropic.com) for Claude AI
-- [Vercel](https://vercel.com) for deployment platform
-- [data.gov.in](https://data.gov.in) for open government data
-- Ministry of Agriculture, Government of India
-
-## 🔗 Links
-
-- **Live Demo**: [Coming Soon]
-- **Demo Video**: [Coming Soon]
-- **Kestra Flows**: `/kestra/flows`
-- **API Docs**: `http://localhost:8000/docs`
-- **Kestra UI**: `http://localhost:8080`
 
 ---
 
